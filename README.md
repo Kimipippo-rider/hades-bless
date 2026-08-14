@@ -9,6 +9,8 @@
 
 非官方粉絲工具。Hades © SuperGiant Games。
 
+線上版：https://kimipippo-rider.github.io/hades-bless/
+
 ## 使用方式
 
 用瀏覽器直接開啟 `index.html`，或在專案目錄執行：
