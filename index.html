@@ -16,6 +16,19 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <script>
+    (function () {
+      var w = innerWidth, h = innerHeight;
+      var phone = (h <= 540 && w <= 980) || w <= 600 || (w <= 820 && w / h <= 2 / 3);
+      var layout = phone ? "phone" : w <= 1100 ? "tablet" : "desktop";
+      var pin = localStorage.getItem("hades-run");
+      var pinFor = localStorage.getItem("hades-run-for");
+      document.documentElement.dataset.layout = layout;
+      document.documentElement.dataset.orient = h >= w ? "portrait" : "landscape";
+      var run = (pin === "1" || pin === "0") && pinFor === layout ? pin === "1" : phone;
+      if (run) document.body.classList.add("is-run");
+    })();
+  </script>
   <canvas id="embers" aria-hidden="true"></canvas>
   <div class="vignette" aria-hidden="true"></div>
 

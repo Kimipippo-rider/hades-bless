@@ -27,13 +27,45 @@
       catch { return []; }
     })()),
     expandedLegend: null,
-    runMode: (() => {
-      const saved = localStorage.getItem("hades-run");
-      if (saved === "1") return true;
-      if (saved === "0") return false;
-      return window.matchMedia("(max-width: 720px)").matches;
-    })(),
+    runMode: false,
   };
+
+  function viewportLayout() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const ratio = w / h;
+    if (h <= 540 && w <= 980) return "phone";
+    if (w <= 600) return "phone";
+    if (w <= 820 && ratio <= 2 / 3) return "phone";
+    if (w <= 1100) return "tablet";
+    return "desktop";
+  }
+
+  function viewportOrient() {
+    return window.innerHeight >= window.innerWidth ? "portrait" : "landscape";
+  }
+
+  function pinnedRunMode(layout = viewportLayout()) {
+    const saved = localStorage.getItem("hades-run");
+    const savedFor = localStorage.getItem("hades-run-for");
+    if ((saved === "1" || saved === "0") && savedFor === layout) return saved === "1";
+    return null;
+  }
+
+  function runModeForViewport(layout = viewportLayout()) {
+    const pinned = pinnedRunMode(layout);
+    if (pinned !== null) return pinned;
+    return layout === "phone";
+  }
+
+  function applyViewportAttrs() {
+    const root = document.documentElement;
+    root.dataset.layout = viewportLayout();
+    root.dataset.orient = viewportOrient();
+  }
+
+  state.runMode = runModeForViewport();
+  applyViewportAttrs();
 
   const WEAPON_MAP = Object.fromEntries(WEAPONS.map((w) => [w.id, w]));
   const BOON_MAP = Object.fromEntries(BOONS.map((b) => [b.id, b]));
@@ -65,7 +97,6 @@
     localStorage.setItem("hades-selected", JSON.stringify([...state.selected]));
     if (state.weaponId) localStorage.setItem("hades-weapon", state.weaponId);
     if (state.aspectId) localStorage.setItem("hades-aspect", state.aspectId);
-    localStorage.setItem("hades-run", state.runMode ? "1" : "0");
     localStorage.setItem("hades-soul", state.soul);
     if (state.keepsake) localStorage.setItem("hades-keepsake", state.keepsake);
     else localStorage.removeItem("hades-keepsake");
@@ -188,7 +219,7 @@
       ? `Hades 配裝：${weapon.nameZh}（${aspect.nameZh}型態）`
       : "Hades 神恩規劃";
     try {
-      if (navigator.share && window.matchMedia("(max-width: 720px)").matches) {
+      if (navigator.share && viewportLayout() === "phone") {
         await navigator.share({ title, text, url });
         return;
       }
@@ -204,6 +235,7 @@
   }
 
   function applyRunChrome() {
+    applyViewportAttrs();
     const onPlanner = state.view === "planner" && weaponOf() && aspectOf();
     document.body.classList.toggle("is-run", state.runMode);
     document.body.classList.toggle("show-dock", state.runMode && onPlanner);
@@ -1357,6 +1389,8 @@
         state.expandedDuo = null;
         state.expandedLegend = null;
       }
+      localStorage.setItem("hades-run", state.runMode ? "1" : "0");
+      localStorage.setItem("hades-run-for", viewportLayout());
       persist();
       applyRunChrome();
       if (state.view === "planner") renderPlanner();
@@ -1558,4 +1592,37 @@
   hydrating = false;
   if (fromUrl) writeHash();
   startEmbers();
+
+  function syncViewportLayout() {
+    applyViewportAttrs();
+    const next = runModeForViewport();
+    if (next === state.runMode) return;
+    state.runMode = next;
+    if (!state.runMode) {
+      state.slotFilter = null;
+      state.expandedDuo = null;
+      state.expandedLegend = null;
+    }
+    applyRunChrome();
+    if (state.view === "planner") renderPlanner();
+  }
+
+  let viewportTimer = 0;
+  const onViewportChange = () => {
+    clearTimeout(viewportTimer);
+    viewportTimer = setTimeout(syncViewportLayout, 80);
+  };
+  addEventListener("resize", onViewportChange);
+  addEventListener("orientationchange", onViewportChange);
+  window.visualViewport?.addEventListener("resize", onViewportChange);
+  [
+    "(max-width: 600px)",
+    "(max-width: 820px) and (max-aspect-ratio: 2/3)",
+    "(max-width: 1100px)",
+    "(max-height: 540px)",
+    "(orientation: landscape)",
+  ].forEach((query) => {
+    const mq = window.matchMedia(query);
+    mq.addEventListener?.("change", onViewportChange);
+  });
 })();
