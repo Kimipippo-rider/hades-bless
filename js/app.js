@@ -236,13 +236,19 @@
   }
 
   const ICONS = {
-    stygius: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><path d="M36 6v44"/><path d="M36 10l7 14H29l7-14z"/><path d="M24 50h24"/><path d="M32 54h8v12h-8z"/></svg>`,
-    varatha: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><path d="M36 4l6 14H30L36 4z"/><path d="M36 18v46"/><path d="M28 34h16"/><path d="M31 62h10"/></svg>`,
-    aegis: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><circle cx="36" cy="36" r="24"/><circle cx="36" cy="36" r="8"/><path d="M36 12v16M36 44v16M12 36h16M44 36h16"/></svg>`,
-    coronacht: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12c18 8 18 40 0 48"/><path d="M22 12c8 16 8 32 0 48"/><path d="M22 36h32"/><path d="M50 32l8 4-8 4"/></svg>`,
-    malphon: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="22" width="20" height="28" rx="6"/><rect x="42" y="22" width="20" height="28" rx="6"/><path d="M16 22v-6h8v6M48 22v-6h8v6"/></svg>`,
-    exagryph: `<svg class="weapon-icon" viewBox="0 0 72 72" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 40h40l16-8"/><path d="M18 40v10h22"/><path d="M48 32l8-10"/><circle cx="20" cy="40" r="3"/></svg>`,
+    stygius: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M40 6c4 12 7 24 7 38l-7 10-7-10c0-14 3-26 7-38z" fill="currentColor" fill-opacity=".2"/><path d="M40 10v40" opacity=".7"/><path d="M24 50c8 6 24 6 32 0l-4 6c-8 5-16 5-24 0z" fill="currentColor" fill-opacity=".22"/><path d="M37 56h6v12h-6z" fill="currentColor" fill-opacity=".18"/><circle cx="40" cy="72" r="4.5"/><path d="M37.5 72.5c.8 1.4 4.2 1.4 5 0" opacity=".9"/></svg>`,
+    varatha: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M40 4l7 16h-4l4 10H33l4-10h-4z" fill="currentColor" fill-opacity=".22"/><path d="M40 30v36"/><path d="M34 42h12M35 50h10"/><path d="M36 66h8l-4 8-4-8z" fill="currentColor" fill-opacity=".18"/><circle cx="40" cy="36" r="2.2" fill="currentColor"/></svg>`,
+    aegis: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="40" cy="40" r="26" fill="currentColor" fill-opacity=".12"/><circle cx="40" cy="40" r="18" opacity=".85"/><path d="M40 22l4.2 10.4 11.2 1.6-8.1 7.9 1.9 11.1L40 47.6 30.8 53l1.9-11.1-8.1-7.9 11.2-1.6z" fill="currentColor" fill-opacity=".28"/><circle cx="40" cy="40" r="5" fill="currentColor" fill-opacity=".35"/></svg>`,
+    coronacht: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 12c20 10 20 46 0 56" fill="currentColor" fill-opacity=".1"/><path d="M24 12c10 14 10 42 0 56"/><path d="M24 14c-6 16-6 36 0 52" opacity=".7"/><path d="M24 40h34"/><path d="M54 34l12 6-12 6"/><path d="M22 18h6M22 62h6"/></svg>`,
+    malphon: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 30h18c3 0 6 3 6 7v18c0 5-4 9-9 9H20c-5 0-8-4-8-9V37c0-4 1-7 2-7z" fill="currentColor" fill-opacity=".18"/><path d="M48 30h18c1 0 2 3 2 7v18c0 5-3 9-8 9h-9c-5 0-9-4-9-9V37c0-4 3-7 6-7z" fill="currentColor" fill-opacity=".18"/><path d="M18 30v-7h8v7M54 30v-7h8v7"/><path d="M20 42h10M20 48h10M50 42h10M50 48h10" opacity=".7"/></svg>`,
+    exagryph: `<svg class="weapon-icon" viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 44h28l8-6h20l6-8" fill="currentColor" fill-opacity=".12"/><path d="M10 44h28l8-6h22"/><path d="M18 44v12h16l4-6"/><path d="M14 44c0-6 4-10 9-10"/><path d="M54 30l10-12"/><path d="M38 38v-8h8"/><circle cx="16" cy="44" r="2.4" fill="currentColor"/></svg>`,
   };
+
+  function weaponMark(id, sizeClass = "") {
+    const svg = ICONS[id];
+    if (!svg) return "";
+    return `<span class="weapon-emblem ${sizeClass}" aria-hidden="true">${svg}</span>`;
+  }
 
   function displayBoonName(boon) {
     const aspect = aspectOf();
@@ -311,7 +317,7 @@
   function renderArmory() {
     $("#weapon-grid").innerHTML = WEAPONS.map((w) => `
       <button class="weapon-card" data-weapon="${w.id}" style="--accent:${w.accent}">
-        ${ICONS[w.id]}
+        ${weaponMark(w.id)}
         <span class="weapon-en">${w.name} · ${w.subtitle}</span>
         <h3>${w.nameZh}</h3>
         <p class="meta">${w.desc}</p>
@@ -327,6 +333,11 @@
   function renderAspects() {
     const weapon = weaponOf();
     if (!weapon) return showView("armory");
+    const emblem = $("#aspect-emblem");
+    if (emblem) {
+      emblem.style.setProperty("--accent", weapon.accent);
+      emblem.innerHTML = weaponMark(weapon.id);
+    }
     $("#aspect-eyebrow").textContent = `${weapon.name} · ${weapon.subtitle}`;
     $("#aspect-title").textContent = `${weapon.nameZh}：選擇型態`;
     $("#aspect-desc").textContent = weapon.desc;
@@ -756,9 +767,16 @@
       return;
     }
 
-    $("#loadout-weapon").innerHTML = `
-      <p class="aspect-mini">${weapon.name} · Aspect of ${aspect.name}</p>
-      <h2>${weapon.nameZh} · ${aspect.nameZh}</h2>
+    const loadout = $("#loadout-weapon");
+    loadout.style.setProperty("--accent", weapon.accent);
+    loadout.innerHTML = `
+      <div class="loadout-head">
+        ${weaponMark(weapon.id, "is-sm")}
+        <div>
+          <p class="aspect-mini">${weapon.name} · Aspect of ${aspect.name}</p>
+          <h2>${weapon.nameZh} · ${aspect.nameZh}</h2>
+        </div>
+      </div>
       <p class="meta">${aspect.effectZh}</p>
       ${aspect.unlockZh ? `<p class="warn">${aspect.unlockZh}</p>` : ""}
       ${aspect.notes ? `<p class="meta" style="margin-top:8px">${aspect.notes}</p>` : ""}
