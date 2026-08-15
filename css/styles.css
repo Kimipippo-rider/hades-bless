@@ -323,7 +323,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
   display: grid;
   grid-template-columns: 52px 1fr;
   gap: 8px;
-  align-items: center;
+  align-items: start;
   font-size: 13px;
   width: 100%;
   margin: 0;
@@ -340,8 +340,36 @@ h3 { font-size: 16px; color: var(--gold-2); }
   box-shadow: inset 0 0 0 1px var(--gold);
   padding: 6px 8px;
 }
-.slot-label { color: var(--muted); font-size: 12px; }
+.slot-label { color: var(--muted); font-size: 12px; padding-top: 4px; }
 .slot-value { color: var(--g, var(--ink)); }
+.slot-combat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.slot-dmg {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--g, var(--line)) 75%, transparent);
+  color: var(--g, var(--muted));
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.status-chip.is-empty {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.combat-hint { font-size: 11px !important; margin-top: 6px; }
 .priority ol { margin: 10px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.7; }
 .priority li { margin: 6px 0; }
 
@@ -716,6 +744,9 @@ body.is-run .planner-main {
   position: static;
 }
 body.is-run .loadout-weapon h2 { font-size: 18px; }
+body.is-run .slot-dmg { display: none; }
+body.is-run .status-chip { height: 16px; padding: 0 5px; font-size: 10px; }
+body.is-run .slot-combat { margin-top: 2px; }
 body.is-run .weapon-emblem.is-sm {
   width: 44px;
   height: 44px;

@@ -649,6 +649,42 @@
     return null;
   }
 
+  function boonStatusLabel(boon) {
+    if (!boon) return null;
+    if (boon.god === "hermes") return "攻速";
+    if (boon.god === "athena") return "偏轉";
+    if (boon.god === "poseidon") return "擊退";
+    if (boon.god === "zeus") return "閃電";
+    return GODS[boon.god]?.curseZh || null;
+  }
+
+  function combatMove(slot) {
+    const weapon = weaponOf();
+    const aspect = aspectOf();
+    let move = { ...(weapon?.moves?.[slot] || {}) };
+    if (aspect?.moves?.[slot]) move = { ...move, ...aspect.moves[slot] };
+    HAMMERS.forEach((h) => {
+      if (!state.hammers.has(h.id) || h.weapon !== weapon?.id || !h.moves?.[slot]) return;
+      move = { ...move, ...h.moves[slot] };
+    });
+    return move;
+  }
+
+  function combatStatus(slot) {
+    if (slot !== "attack" && slot !== "special") return null;
+    const move = combatMove(slot);
+    const current = selectedInSlot(slot);
+    const status = boonStatusLabel(current);
+    const dmg = [move.damage, move.nameZh].filter(Boolean).join(" · ");
+    return {
+      dmg,
+      note: move.noteZh || "",
+      status: current ? (status || "已上神恩") : "尚未上神恩",
+      filled: Boolean(current),
+      color: current ? GODS[current.god]?.color : "",
+    };
+  }
+
   function renderCoreSlots() {
     const aspect = aspectOf();
     if (!aspect) return;
@@ -660,9 +696,16 @@
       const label = current ? shown.nameZh : rec ? (state.runMode ? shown.nameZh : `建議：${shown.nameZh}`) : "未鎖定";
       const on = state.slotFilter === slot;
       const filled = Boolean(current);
-      return `<button type="button" class="slot-row ${on ? "is-on" : ""} ${filled ? "is-filled" : ""}" data-slot-filter="${slot}" style="--g:${god ? god.color : "var(--gold)"}">
+      const combat = combatStatus(slot);
+      const combatRow = combat
+        ? `<span class="slot-combat">
+            <span class="slot-dmg">${combat.dmg}${combat.note ? ` · ${combat.note}` : ""}</span>
+            <span class="status-chip ${combat.filled ? "is-on" : "is-empty"}">${combat.status}</span>
+          </span>`
+        : "";
+      return `<button type="button" class="slot-row ${on ? "is-on" : ""} ${filled ? "is-filled" : ""}" data-slot-filter="${slot}" style="--g:${god ? god.color : (combat?.color || "var(--gold)")}">
         <span class="slot-label">${SLOT_LABELS[slot]}</span>
-        <span class="slot-value">${label}<br><small>${current ? `${god.nameZh} · 已勾選` : rec ? `${god.nameZh} · ${shown.name}` : "—"}</small></span>
+        <span class="slot-value">${label}<br><small>${current ? `${god.nameZh} · 已勾選` : rec ? `${god.nameZh} · ${shown.name}` : "—"}</small>${combatRow}</span>
       </button>`;
     }).join("");
   }
@@ -778,6 +821,7 @@
         </div>
       </div>
       <p class="meta">${aspect.effectZh}</p>
+      <p class="meta combat-hint">攻擊／特殊欄顯示基礎傷害與狀態，不含石榴與稀有度。</p>
       ${aspect.unlockZh ? `<p class="warn">${aspect.unlockZh}</p>` : ""}
       ${aspect.notes ? `<p class="meta" style="margin-top:8px">${aspect.notes}</p>` : ""}
     `;
@@ -1423,6 +1467,7 @@
       else state.hammers.add(id);
       persist();
       renderRunSystems();
+      renderCoreSlots();
       return;
     }
 

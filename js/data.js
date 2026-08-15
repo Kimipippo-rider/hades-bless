@@ -561,6 +561,10 @@ const WEAPONS = [
     accent: "#c23b3b",
     playstyle: "近戰均衡",
     desc: "三連斬的中距離長劍。特殊攻擊短跳後在身邊爆發，落地短暫停頓。",
+    moves: {
+      attack: { nameZh: "三連斬", damage: "20 · 25 · 30" },
+      special: { nameZh: "新星粉碎", damage: "50", noteZh: "落地短暫停頓" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -587,6 +591,9 @@ const WEAPONS = [
         slots: { attack: "deadly-strike", special: "heartbreak-flourish", dash: "divine-dash" },
         duos: ["heart-rend", "deadly-reversal"],
         notes: "核心是特殊後普攻吃暴擊。阿提米絲攻擊 + 愛芙蘿黛蒂虛弱可衝撕心裂肺。潔淨擊殺、要害都是強補。",
+        moves: {
+          special: { nameZh: "新星粉碎", damage: "50", noteZh: "特殊後普攻可暴擊" },
+        },
       },
       {
         id: "poseidon",
@@ -600,6 +607,9 @@ const WEAPONS = [
         slots: { special: "tempest-flourish", cast: "true-shot", dash: "divine-dash" },
         duos: ["mirage-shot", "sea-storm", "lightning-rod"],
         notes: "把血石打進敵人再特殊打出，觸發退出傷口。夜之鏡若選煉獄靈魂，避雷針極強。",
+        moves: {
+          special: { nameZh: "新星粉碎", damage: "50", noteZh: "打出敵人身上的詠唱" },
+        },
       },
       {
         id: "arthur",
@@ -614,6 +624,10 @@ const WEAPONS = [
         slots: { attack: "heartbreak-strike", dash: "divine-dash", special: "frost-flourish" },
         duos: ["stubborn-roots", "unshakable-mettle", "calculated-risk"],
         notes: "動作慢，神聖衝刺幾乎不可缺。光環減傷讓生存向神恩（蒂美特、戴奧尼索斯、雅典娜）價值更高。",
+        moves: {
+          attack: { nameZh: "重斬", damage: "60" },
+          special: { nameZh: "聖域新星", damage: "70", noteZh: "減傷光環" },
+        },
       },
     ],
   },
@@ -629,6 +643,10 @@ const WEAPONS = [
     accent: "#2f9e6a",
     playstyle: "中遠距突刺",
     desc: "可蓄力迴旋斬的長槍。特殊攻擊把槍擲出，再按一次召回，來回都會傷害敵人。",
+    moves: {
+      attack: { nameZh: "突刺", damage: "25" },
+      special: { nameZh: "擲槍", damage: "45", noteZh: "召回再傷一次" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -655,6 +673,9 @@ const WEAPONS = [
         slots: { special: "heartbreak-flourish", attack: "deadly-strike", dash: "divine-dash" },
         duos: ["heart-rend", "deadly-reversal", "merciful-end"],
         notes: "擲槍 → 衝刺取回 → 強化普攻。特殊放虛弱或暴擊都強；荷米斯的迅捷華擊很香。",
+        moves: {
+          special: { nameZh: "擲槍", damage: "45", noteZh: "衝刺取回後強化普攻" },
+        },
       },
       {
         id: "hades",
@@ -668,6 +689,9 @@ const WEAPONS = [
         slots: { attack: "curse-of-agony", special: "drunken-flourish", dash: "tidal-dash" },
         duos: ["curse-of-longing", "curse-of-nausea", "sea-storm"],
         notes: "橫掃一次打中多人，厄運與宿醉都能快速上狀態。波塞頓攻擊可觸發海之風暴。",
+        moves: {
+          attack: { nameZh: "懲罰橫掃", damage: "25", noteZh: "迴旋改為大範圍橫掃" },
+        },
       },
       {
         id: "guan-yu",
@@ -682,6 +706,10 @@ const WEAPONS = [
         slots: { special: "drunken-flourish", attack: "heartbreak-strike", dash: "divine-dash" },
         duos: ["low-tolerance", "curse-of-nausea", "stubborn-roots"],
         notes: "生命極低，神聖衝刺與回復向神恩很重要。特殊多段極適合疊宿醉。",
+        moves: {
+          attack: { nameZh: "霜公平刃", damage: "多段" },
+          special: { nameZh: "旋轉拉近", damage: "多段", noteZh: "生命與治療大幅降低" },
+        },
       },
     ],
   },
@@ -697,6 +725,10 @@ const WEAPONS = [
     accent: "#c9a227",
     playstyle: "防禦反擊",
     desc: "揮擊帶擊退；長按格擋並蓄力公牛衝鋒。特殊把盾擲出，在敵人間彈跳後返回。",
+    moves: {
+      attack: { nameZh: "盾擊", damage: "25", noteZh: "天生擊退" },
+      special: { nameZh: "擲盾", damage: "15", noteZh: "彈跳後返回" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -723,6 +755,9 @@ const WEAPONS = [
         slots: { special: "thunder-flourish", attack: "deadly-strike", dash: "divine-dash" },
         duos: ["deadly-reversal", "scintillating-feast"],
         notes: "衝鋒後特殊變成彈幕。宙斯或阿提米絲特殊最賺；戴奧尼索斯特殊可讓每面盾上宿醉。",
+        moves: {
+          special: { nameZh: "多重擲盾", damage: "15", noteZh: "衝鋒後一次擲出多面盾" },
+        },
       },
       {
         id: "zeus",
@@ -736,6 +771,9 @@ const WEAPONS = [
         slots: { special: "thunder-flourish", attack: "tempest-strike", dash: "tidal-dash" },
         duos: ["sea-storm", "cold-fusion", "exclusive-access"],
         notes: "把圓盤停在敵人堆裡持續輸出。靜電釋放 + 冷聚變讓觸電常駐。",
+        moves: {
+          special: { nameZh: "閃電圓盤", damage: "8 → 30", noteZh: "穿透，召回再傷一次" },
+        },
       },
       {
         id: "beowulf",
@@ -751,6 +789,9 @@ const WEAPONS = [
         duos: ["exclusive-access", "ice-wine", "curse-of-drowning", "sweet-nectar"],
         notes: "許多投射詠唱雙重無法使用（離別一擊、冰冷擁抱、水晶澄明、狩獵刃、閃電方陣、暴雪射擊、閃耀盛宴）。改拿閃焰詠唱：粉碎／洪水／雷霆／迷幻／寒冰。",
         warnings: ["beowulf"],
+        moves: {
+          special: { nameZh: "擲盾", damage: "15", noteZh: "公牛衝鋒改為龍之衝鋒（裝填詠唱）" },
+        },
       },
     ],
   },
@@ -766,6 +807,10 @@ const WEAPONS = [
     accent: "#7cb342",
     playstyle: "遠程蓄力",
     desc: "可蓄力的遠程攻擊，完美釋放傷害更高。特殊呈扇形射出多支箭。",
+    moves: {
+      attack: { nameZh: "蓄力射擊", damage: "20", noteZh: "完美釋放更高" },
+      special: { nameZh: "扇形齊射", damage: "10 × 5" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -792,6 +837,9 @@ const WEAPONS = [
         slots: { attack: "deadly-strike", special: "heartbreak-flourish", dash: "divine-dash" },
         duos: ["heart-rend", "low-tolerance", "splitting-headache"],
         notes: "普攻點名，特殊全部送進同一目標。特殊放虛弱或宿醉能瞬間疊滿狀態。",
+        moves: {
+          special: { nameZh: "追蹤齊射", damage: "10 × 3 → 7", noteZh: "打進最近被普攻命中的敵人" },
+        },
       },
       {
         id: "hera",
@@ -820,6 +868,9 @@ const WEAPONS = [
         slots: { attack: "curse-of-agony", special: "heartbreak-flourish", dash: "divine-dash" },
         duos: ["curse-of-longing", "heart-rend"],
         notes: "共享苦難讓厄運與虛弱在敵人之間傳開。渴求詛咒是招牌。",
+        moves: {
+          attack: { nameZh: "舍蘭伽", damage: "20", noteZh: "共享苦難" },
+        },
       },
     ],
   },
@@ -835,6 +886,10 @@ const WEAPONS = [
     accent: "#d4782a",
     playstyle: "近身連打",
     desc: "極快的近戰連擊。特殊為二段上鉤拳；衝刺中使用特殊會更快但只打一段。",
+    moves: {
+      attack: { nameZh: "連拳", damage: "15 · 20 · 25" },
+      special: { nameZh: "上鉤拳", damage: "30 · 40", noteZh: "衝刺中只打一段" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -861,6 +916,9 @@ const WEAPONS = [
         slots: { special: "tempest-flourish", attack: "lightning-strike", dash: "tidal-dash" },
         duos: ["sea-storm", "cold-fusion", "sweet-nectar"],
         notes: "把敵人拉成一堆再輸出。波塞頓特殊 + 宙斯攻擊可衝海之風暴。",
+        moves: {
+          special: { nameZh: "磁力切割", damage: "30", noteZh: "拉近敵人，隨後強化攻擊" },
+        },
       },
       {
         id: "demeter",
@@ -888,6 +946,9 @@ const WEAPONS = [
         slots: { attack: "heartbreak-strike", special: "deadly-flourish", dash: "divine-dash" },
         duos: ["heart-rend", "deadly-reversal", "merciful-end"],
         notes: "重創讓敵人輸出更高也更脆。攻擊放虛弱，配合暴擊或偏轉都很強。",
+        moves: {
+          special: { nameZh: "衝刺上鉤", damage: "30 · 40", noteZh: "可施加重創" },
+        },
       },
     ],
   },
@@ -903,6 +964,10 @@ const WEAPONS = [
     accent: "#e8d48b",
     playstyle: "遠程火器",
     desc: "點射或全自動射擊，打空需裝填。特殊發射延遲落地的範圍榴彈。",
+    moves: {
+      attack: { nameZh: "點射", damage: "10" },
+      special: { nameZh: "榴彈", damage: "80", noteZh: "延遲落地" },
+    },
     aspects: [
       {
         id: "zagreus",
@@ -942,6 +1007,9 @@ const WEAPONS = [
         slots: { attack: "deadly-strike", special: "curse-of-pain", dash: "divine-dash" },
         duos: ["heart-rend", "curse-of-longing"],
         notes: "打一發強化彈就裝填。暴擊與虛弱放大單發傷害；阿瑞斯特殊可在風箏時上厄運。",
+        moves: {
+          attack: { nameZh: "強化彈", damage: "10", noteZh: "手動裝填後下一發 50 → 150" },
+        },
       },
       {
         id: "lucifer",
@@ -957,6 +1025,10 @@ const WEAPONS = [
         duos: ["curse-of-nausea", "low-tolerance", "sea-storm"],
         notes: "獵手衝刺與此型態不相容。光束可持續疊宿醉；宙斯攻擊讓光束不斷閃電。",
         warnings: ["lucifer"],
+        moves: {
+          attack: { nameZh: "持續光束", damage: "持續" },
+          special: { nameZh: "地獄火", damage: "50 → 100" },
+        },
       },
     ],
   },
@@ -987,10 +1059,10 @@ const KEEPSAKES = [
 
 const HAMMERS = [
   { id: "stygius-double-edge", weapon: "stygius", name: "Double Edge", nameZh: "雙刃", effectZh: "衝刺攻擊打兩下，並提高 20% 傷害。", rec: ["zagreus", "nemesis"] },
-  { id: "stygius-flurry-slash", weapon: "stygius", name: "Flurry Slash", nameZh: "連斬", effectZh: "長按攻擊可連續揮斬，每下 25 傷害。", rec: ["zagreus", "nemesis"] },
-  { id: "stygius-dash-nova", weapon: "stygius", name: "Dash Nova", nameZh: "衝刺新星", effectZh: "特殊改為向前衝鋒，並獲得 0.8 秒堅韌（Sturdy）。", rec: ["arthur", "zagreus"] },
-  { id: "stygius-world-splitter", weapon: "stygius", name: "World Splitter", nameZh: "世界分割", effectZh: "攻擊改為單次重斬，基礎傷害 90。", rec: ["arthur"] },
-  { id: "stygius-double-nova", weapon: "stygius", name: "Double Nova", nameZh: "雙重新星", effectZh: "特殊攻擊爆發兩次。", rec: ["poseidon"] },
+  { id: "stygius-flurry-slash", weapon: "stygius", name: "Flurry Slash", nameZh: "連斬", effectZh: "長按攻擊可連續揮斬，每下 25 傷害。", rec: ["zagreus", "nemesis"], moves: { attack: { nameZh: "連斬", damage: "25" } } },
+  { id: "stygius-dash-nova", weapon: "stygius", name: "Dash Nova", nameZh: "衝刺新星", effectZh: "特殊改為向前衝鋒，並獲得 0.8 秒堅韌（Sturdy）。", rec: ["arthur", "zagreus"], moves: { special: { nameZh: "衝刺新星", damage: "50", noteZh: "衝鋒並獲得堅韌" } } },
+  { id: "stygius-world-splitter", weapon: "stygius", name: "World Splitter", nameZh: "世界分割", effectZh: "攻擊改為單次重斬，基礎傷害 90。", rec: ["arthur"], moves: { attack: { nameZh: "世界分割", damage: "90" } } },
+  { id: "stygius-double-nova", weapon: "stygius", name: "Double Nova", nameZh: "雙重新星", effectZh: "特殊攻擊爆發兩次。", rec: ["poseidon"], moves: { special: { nameZh: "雙重新星", damage: "50 × 2" } } },
 
   { id: "varatha-extending-jab", weapon: "varatha", name: "Extending Jab", nameZh: "延展突刺", effectZh: "攻擊射程更長。", rec: ["zagreus", "hades"] },
   { id: "varatha-flaring-spin", weapon: "varatha", name: "Flaring Spin", nameZh: "熾熱迴旋", effectZh: "迴旋斬範圍與傷害提高。", rec: ["hades"] },
@@ -1001,25 +1073,25 @@ const HAMMERS = [
   { id: "aegis-dashing-wallop", weapon: "aegis", name: "Dashing Wallop", nameZh: "衝刺猛擊", effectZh: "衝刺攻擊改為範圍猛擊。", rec: ["zagreus", "chaos"] },
   { id: "aegis-sudden-rush", weapon: "aegis", name: "Sudden Rush", nameZh: "驟然衝鋒", effectZh: "公牛衝鋒蓄力更快。", rec: ["zagreus", "beowulf"] },
   { id: "aegis-dread-flight", weapon: "aegis", name: "Dread Flight", nameZh: "恐懼飛行", effectZh: "擲盾彈跳更多次。", rec: ["chaos"] },
-  { id: "aegis-charged-shot", weapon: "aegis", name: "Charged Shot", nameZh: "蓄力射擊", effectZh: "長按特殊發射砲擊。", rec: ["zeus"] },
+  { id: "aegis-charged-shot", weapon: "aegis", name: "Charged Shot", nameZh: "蓄力射擊", effectZh: "長按特殊發射砲擊。", rec: ["zeus"], moves: { special: { nameZh: "蓄力砲擊", damage: "50", noteZh: "長按特殊發射" } } },
   { id: "aegis-empowering-flight", weapon: "aegis", name: "Empowering Flight", nameZh: "強化飛行", effectZh: "擲盾後攻擊與特殊更強。", rec: ["zeus", "chaos"] },
 
-  { id: "coronacht-triple-shot", weapon: "coronacht", name: "Triple Shot", nameZh: "三連射", effectZh: "攻擊同時射出三箭。", rec: ["zagreus", "hera"] },
+  { id: "coronacht-triple-shot", weapon: "coronacht", name: "Triple Shot", nameZh: "三連射", effectZh: "攻擊同時射出三箭。", rec: ["zagreus", "hera"], moves: { attack: { nameZh: "三連射", damage: "20 × 3" } } },
   { id: "coronacht-flurry-shot", weapon: "coronacht", name: "Flurry Shot", nameZh: "連射", effectZh: "攻擊更快，完美蓄力窗口更寬。", rec: ["zagreus", "chiron"] },
-  { id: "coronacht-sniper-shot", weapon: "coronacht", name: "Sniper Shot", nameZh: "狙擊射擊", effectZh: "完美蓄力傷害大幅提高。", rec: ["zagreus", "rama"] },
+  { id: "coronacht-sniper-shot", weapon: "coronacht", name: "Sniper Shot", nameZh: "狙擊射擊", effectZh: "完美蓄力傷害大幅提高。", rec: ["zagreus", "rama"], moves: { attack: { nameZh: "狙擊射擊", damage: "20", noteZh: "完美蓄力大增" } } },
   { id: "coronacht-charged-volley", weapon: "coronacht", name: "Charged Volley", nameZh: "蓄力齊射", effectZh: "可蓄力特殊，射出更多箭。", rec: ["chiron"] },
   { id: "coronacht-concentrated-volley", weapon: "coronacht", name: "Concentrated Volley", nameZh: "集中齊射", effectZh: "特殊箭更集中、更痛。", rec: ["chiron", "rama"] },
 
   { id: "malphon-long-knuckle", weapon: "malphon", name: "Long Knuckle", nameZh: "長拳", effectZh: "攻擊射程更長。", rec: ["zagreus", "demeter"] },
   { id: "malphon-rolling-knuckle", weapon: "malphon", name: "Rolling Knuckle", nameZh: "滾動拳", effectZh: "衝刺攻擊改為範圍拳擊。", rec: ["zagreus", "gilgamesh"] },
-  { id: "malphon-kinetic-launcher", weapon: "malphon", name: "Kinetic Launcher", nameZh: "動能發射", effectZh: "特殊把敵人打飛。", rec: ["talos"] },
+  { id: "malphon-kinetic-launcher", weapon: "malphon", name: "Kinetic Launcher", nameZh: "動能發射", effectZh: "特殊把敵人打飛。", rec: ["talos"], moves: { special: { nameZh: "動能發射", damage: "30", noteZh: "把敵人打飛" } } },
   { id: "malphon-draining-cutter", weapon: "malphon", name: "Draining Cutter", nameZh: "汲取切割", effectZh: "特殊命中回復生命。", rec: ["demeter", "gilgamesh"] },
   { id: "malphon-rending-claws", weapon: "malphon", name: "Rending Claws", nameZh: "撕裂之爪", effectZh: "重創持續更久。", rec: ["gilgamesh"] },
 
   { id: "exagryph-cluster-bomb", weapon: "exagryph", name: "Cluster Bomb", nameZh: "集束炸彈", effectZh: "特殊分裂成多枚榴彈。", rec: ["eris", "zagreus"] },
   { id: "exagryph-hazard-bomb", weapon: "exagryph", name: "Hazard Bomb", nameZh: "危險炸彈", effectZh: "榴彈落地後延遲爆炸、範圍更大。", rec: ["eris"] },
   { id: "exagryph-targeting-system", weapon: "exagryph", name: "Targeting System", nameZh: "鎖定系統", effectZh: "攻擊自動追蹤。", rec: ["zagreus", "hestia"] },
-  { id: "exagryph-delta-chamber", weapon: "exagryph", name: "Delta Chamber", nameZh: "三角彈巢", effectZh: "攻擊三連發且無需裝填。", rec: ["zagreus"] },
+  { id: "exagryph-delta-chamber", weapon: "exagryph", name: "Delta Chamber", nameZh: "三角彈巢", effectZh: "攻擊三連發且無需裝填。", rec: ["zagreus"], moves: { attack: { nameZh: "三連發", damage: "10 × 3", noteZh: "無需裝填" } } },
   { id: "exagryph-eternal-chamber", weapon: "exagryph", name: "Eternal Chamber", nameZh: "永恆彈巢", effectZh: "裝填更快。", rec: ["hestia", "lucifer"] },
-  { id: "exagryph-seeking-fire", weapon: "exagryph", name: "Seeking Fire", nameZh: "追蹤射擊", effectZh: "光束會轉向敵人。", rec: ["lucifer"] },
+  { id: "exagryph-seeking-fire", weapon: "exagryph", name: "Seeking Fire", nameZh: "追蹤射擊", effectZh: "光束會轉向敵人。", rec: ["lucifer"], moves: { attack: { nameZh: "追蹤光束", damage: "持續" } } },
 ];
