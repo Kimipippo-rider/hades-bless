@@ -260,6 +260,22 @@
     return false;
   }
 
+  function slotConflict(boon) {
+    if (!SLOT_KEYS.includes(boon.slot)) return false;
+    for (const id of state.selected) {
+      if (id !== boon.id && BOON_MAP[id]?.slot === boon.slot) return true;
+    }
+    return false;
+  }
+
+  function isBoonHidden(boon, needed) {
+    if (state.selected.has(boon.id)) return false;
+    if (state.highlightBoon === boon.id) return false;
+    if (state.search.trim()) return false;
+    if (needed?.has(boon.id)) return false;
+    return isBoonDisabled(boon) || slotConflict(boon);
+  }
+
   function keepsakeOf() {
     return KEEPSAKE_MAP[state.keepsake] || null;
   }
@@ -465,7 +481,8 @@
   }
 
   function paintNeededBoons() {
-    syncBoonCards();
+    if (state.view === "planner" && weaponOf() && aspectOf()) renderBoonBoard();
+    else syncBoonCards();
   }
 
   function gapChip(id) {
@@ -761,6 +778,16 @@
       return `<button class="god-pill ${state.godFilter === id ? "is-active" : ""} ${keepOn ? "is-keep" : ""}" data-god="${id}" style="--g:${g.color}">${g.nameZh}${keepOn ? " · 信物" : ""}</button>`;
     }).join("");
 
+    renderBoonBoard();
+    renderDuoRail();
+    applyRunChrome();
+  }
+
+  function renderBoonBoard() {
+    const aspect = aspectOf();
+    const board = $("#boon-board");
+    if (!aspect || !board) return;
+
     const q = state.search.trim().toLowerCase();
     const waiting = state.runMode && !state.slotFilter && state.godFilter === "all" && !q;
     const hint = $("#run-hint");
@@ -772,20 +799,25 @@
         : "正在顯示對應神恩；再點一次欄位可回到提示。";
     }
 
+    const neededIds = neededBoonIds();
     const grouped = {};
+    let hiddenCount = 0;
     if (!waiting) {
       BOONS.forEach((b) => {
         if (state.godFilter !== "all" && b.god !== state.godFilter) return;
         if (state.slotFilter && b.slot !== state.slotFilter) return;
         const shown = displayBoonName(b);
         if (q && ![b.name, b.nameZh, shown.name, shown.nameZh, b.effectZh].join(" ").toLowerCase().includes(q)) return;
+        if (isBoonHidden(b, neededIds)) {
+          hiddenCount += 1;
+          return;
+        }
         (grouped[b.god] ||= []).push(b);
       });
     }
 
     const slotZh = Object.fromEntries(SLOTS.map((s) => [s.id, s.nameZh]));
-    const neededIds = neededBoonIds();
-    $("#boon-board").innerHTML = Object.keys(GODS).filter((id) => grouped[id]).map((gid) => {
+    const blocks = Object.keys(GODS).filter((id) => grouped[id]).map((gid) => {
       const g = GODS[gid];
       const rec = aspect.gods.includes(gid);
       return `<article class="god-block" style="--g:${g.color}">
@@ -810,10 +842,15 @@
           }).join("")}
         </div>
       </article>`;
-    }).join("") || (waiting ? "" : `<p class="meta">沒有符合的神恩。</p>`);
+    }).join("");
 
-    renderDuoRail();
-    applyRunChrome();
+    const emptyNote = hiddenCount
+      ? `<p class="meta hide-note">已隱藏 ${hiddenCount} 道不相容神恩（同欄位、夜之鏡或型態）。取消勾選或搜尋名稱可再顯示。</p>`
+      : `<p class="meta">沒有符合的神恩。</p>`;
+    board.innerHTML = blocks || (waiting ? "" : emptyNote);
+    if (blocks && hiddenCount) {
+      board.insertAdjacentHTML("afterbegin", `<p class="meta hide-note">已依目前勾選隱藏 ${hiddenCount} 道不相容神恩。取消該欄位或搜尋名稱可再顯示。</p>`);
+    }
   }
 
   function rankDuos() {
@@ -1170,7 +1207,7 @@
     }
     persist();
     renderCoreSlots();
-    syncBoonCards();
+    renderBoonBoard();
     renderDuoRail();
   }
 
@@ -1336,7 +1373,7 @@
       renderRunSystems();
       renderPriorityList();
       renderCoreSlots();
-      syncBoonCards();
+      renderBoonBoard();
       renderDuoRail();
       if (removed.length) toast(`已取消不相容神恩：${removed.join("、")}`);
       return;
@@ -1424,7 +1461,7 @@
       state.obtainedDuos.clear();
       persist();
       renderCoreSlots();
-      syncBoonCards();
+      renderBoonBoard();
       renderDuoRail();
     }
   });
