@@ -74,7 +74,7 @@
   const HAMMER_MAP = Object.fromEntries(HAMMERS.map((h) => [h.id, h]));
   const LEGENDARIES = BOONS.filter((b) => b.slot === "legendary");
   const SLOT_KEYS = ["attack", "special", "cast", "dash", "call"];
-  const SLOT_LABELS = { attack: "攻擊", special: "特殊", cast: "詠唱", dash: "衝刺", call: "神援" };
+  const SLOT_LABELS = { attack: "攻擊", special: "特殊", cast: "投彈", dash: "衝刺", call: "求援" };
   const motionLite = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function prefersLiteMotion() {
@@ -192,7 +192,7 @@
     if (state.view === "planner" && weapon && aspect) {
       document.title = `${weapon.nameZh} · ${aspect.nameZh}｜冥府祝福`;
     } else {
-      document.title = "冥府祝福 · Hades 神恩規劃";
+      document.title = "冥府祝福 · Hades 祝福規劃";
     }
   }
 
@@ -217,7 +217,7 @@
     const title = weapon && aspect ? `${weapon.nameZh} · ${aspect.nameZh}` : "冥府祝福";
     const text = weapon && aspect
       ? `Hades 配裝：${weapon.nameZh}（${aspect.nameZh}型態）`
-      : "Hades 神恩規劃";
+      : "Hades 祝福規劃";
     try {
       if (navigator.share && viewportLayout() === "phone") {
         await navigator.share({ title, text, url });
@@ -328,7 +328,7 @@
     return [
       { region: REGIONS[0], keepsakeId: godKeepsake(gods[0]), why: gods[0] ? `先鎖定 ${GODS[gods[0]].nameZh}` : "先鎖核心欄位" },
       { region: REGIONS[1], keepsakeId: godKeepsake(gods[1]), why: gods[1] ? `鋪 ${GODS[gods[1]].nameZh} 雙重` : "第二位神" },
-      { region: REGIONS[2], keepsakeId: third, why: gods[2] ? `${GODS[gods[2]].nameZh} 或生存` : "荷米斯羽毛疊閃避" },
+      { region: REGIONS[2], keepsakeId: third, why: gods[2] ? `${GODS[gods[2]].nameZh} 或生存` : "赫爾墨斯羽毛疊閃避" },
       { region: REGIONS[3], keepsakeId: "lucky-tooth", why: "額外死亡反抗" },
       { region: REGIONS[4], keepsakeId: "evergreen-acorn", why: "首領戰減傷" },
     ];
@@ -399,11 +399,11 @@
   function extraReqState(duo) {
     if (duo.extraReq === "revenge") {
       const ok = BOONS.some((b) => b.tags?.includes("revenge") && state.selected.has(b.id));
-      return { ok, counts: true, label: "復仇神恩" };
+      return { ok, counts: true, label: "復仇祝福" };
     }
     if (duo.extraReq === "non-hades-aid") {
       const ok = BOONS.some((b) => b.slot === "call" && state.selected.has(b.id));
-      return { ok, counts: true, label: "奧林帕斯神援" };
+      return { ok, counts: true, label: "奧林帕斯求援" };
     }
     return { ok: true, counts: false, label: "" };
   }
@@ -425,7 +425,7 @@
     const exclusiveTakenId = (duo.exclusiveWith || []).find((id) => state.obtainedDuos.has(id));
     const blocked = aspectBlocked || soulBlocked || Boolean(boonBlockedId) || Boolean(exclusiveTakenId);
     let blockReason = "";
-    if (soulBlocked) blockReason = "需要夜之鏡「煉獄靈魂」";
+    if (soulBlocked) blockReason = "需要夜之聖鏡「煉獄靈魂」";
     else if (aspectBlocked) blockReason = "與此型態不相容";
     else if (boonBlockedId) {
       const b = boonOf(boonBlockedId);
@@ -464,7 +464,7 @@
       const owned = all.filter((b) => state.selected.has(b.id)).map((b) => b.id);
       extra = {
         type: "revenge",
-        label: "復仇神恩",
+        label: "復仇祝福",
         met: owned.length > 0,
         owned,
         missing: all.map((b) => b.id),
@@ -480,7 +480,7 @@
       const owned = all.filter((b) => state.selected.has(b.id)).map((b) => b.id);
       extra = {
         type: "aid",
-        label: "奧林帕斯神援",
+        label: "奧林帕斯求援",
         met: owned.length > 0,
         owned,
         missing: all.map((b) => b.id),
@@ -555,16 +555,16 @@
     let extraRow = "";
     if (gaps.extra?.type === "revenge") {
       extraRow = gaps.extra.met
-        ? `<div class="gap-row is-met"><div class="gap-label"><strong>復仇神恩</strong><span style="color:#8ee0ad">已有 ${displayBoonName(boonOf(gaps.extra.owned[0])).nameZh}</span></div></div>`
-        : `<div class="gap-row"><div class="gap-label"><strong>還缺復仇神恩</strong><span>下列擇一</span></div><div class="gap-picks">${revengeBoons().map((b) => gapChip(b.id)).join("")}</div></div>`;
+        ? `<div class="gap-row is-met"><div class="gap-label"><strong>復仇祝福</strong><span style="color:#8ee0ad">已有 ${displayBoonName(boonOf(gaps.extra.owned[0])).nameZh}</span></div></div>`
+        : `<div class="gap-row"><div class="gap-label"><strong>還缺復仇祝福</strong><span>下列擇一</span></div><div class="gap-picks">${revengeBoons().map((b) => gapChip(b.id)).join("")}</div></div>`;
     } else if (gaps.extra?.type === "soul") {
       extraRow = gaps.extra.met
-        ? `<div class="gap-row is-met"><div class="gap-label"><strong>夜之鏡</strong><span style="color:#8ee0ad">已選煉獄靈魂</span></div></div>`
-        : `<div class="gap-row"><div class="gap-label"><strong>還缺煉獄靈魂</strong><span>請在左側改選夜之鏡</span></div></div>`;
+        ? `<div class="gap-row is-met"><div class="gap-label"><strong>夜之聖鏡</strong><span style="color:#8ee0ad">已選煉獄靈魂</span></div></div>`
+        : `<div class="gap-row"><div class="gap-label"><strong>還缺煉獄靈魂</strong><span>請在左側改選夜之聖鏡</span></div></div>`;
     } else if (gaps.extra?.type === "aid") {
       extraRow = gaps.extra.met
-        ? `<div class="gap-row is-met"><div class="gap-label"><strong>奧林帕斯神援</strong><span style="color:#8ee0ad">已有 ${displayBoonName(boonOf(gaps.extra.owned[0])).nameZh}</span></div></div>`
-        : `<div class="gap-row"><div class="gap-label"><strong>還缺奧林帕斯神援</strong><span>下列擇一（非黑帝斯）</span></div><div class="gap-picks">${gaps.extra.missing.map(gapChip).join("")}</div></div>`;
+        ? `<div class="gap-row is-met"><div class="gap-label"><strong>奧林帕斯求援</strong><span style="color:#8ee0ad">已有 ${displayBoonName(boonOf(gaps.extra.owned[0])).nameZh}</span></div></div>`
+        : `<div class="gap-row"><div class="gap-label"><strong>還缺奧林帕斯求援</strong><span>下列擇一（非黑帝斯）</span></div><div class="gap-picks">${gaps.extra.missing.map(gapChip).join("")}</div></div>`;
     } else if (gaps.extra?.type === "note") {
       extraRow = `<p class="warn">${gaps.extra.label}</p>`;
     }
@@ -650,8 +650,8 @@
     const rows = gaps.rows.map((row) => {
       if (row.type === "soul") {
         return row.met
-          ? `<div class="gap-row is-met"><div class="gap-label"><strong>夜之鏡</strong><span style="color:#8ee0ad">已選${row.label}</span></div></div>`
-          : `<div class="gap-row"><div class="gap-label"><strong>還缺${row.label}</strong><span>請在左側改選夜之鏡</span></div></div>`;
+          ? `<div class="gap-row is-met"><div class="gap-label"><strong>夜之聖鏡</strong><span style="color:#8ee0ad">已選${row.label}</span></div></div>`
+          : `<div class="gap-row"><div class="gap-label"><strong>還缺${row.label}</strong><span>請在左側改選夜之聖鏡</span></div></div>`;
       }
       if (row.met) {
         const ownedNames = [
@@ -666,7 +666,7 @@
         return `<button type="button" class="gap-chip" data-keepsake="${keep.id}">信物：${keep.nameZh}</button>`;
       }).join("");
       return `<div class="gap-row">
-        <div class="gap-label"><strong>還缺 ${row.label}</strong><span>${row.need ? `已有 ${row.have}/${row.need}` : "點名稱跳到神恩"}</span></div>
+        <div class="gap-label"><strong>還缺 ${row.label}</strong><span>${row.need ? `已有 ${row.have}/${row.need}` : "點名稱跳到祝福"}</span></div>
         <div class="gap-picks">${(row.missing || []).map(gapChip).join("")}${keepChips}</div>
       </div>`;
     }).join("");
@@ -684,9 +684,9 @@
   function boonStatusLabel(boon) {
     if (!boon) return null;
     if (boon.god === "hermes") return "攻速";
-    if (boon.god === "athena") return "偏轉";
+    if (boon.god === "athena") return "反彈";
     if (boon.god === "poseidon") return "擊退";
-    if (boon.god === "zeus") return "閃電";
+    if (boon.god === "zeus") return "心驚膽戰";
     return GODS[boon.god]?.curseZh || null;
   }
 
@@ -711,7 +711,7 @@
     return {
       dmg,
       note: move.noteZh || "",
-      status: current ? (status || "已上神恩") : "尚未上神恩",
+      status: current ? (status || "已上祝福") : "尚未上祝福",
       filled: Boolean(current),
       color: current ? GODS[current.god]?.color : "",
     };
@@ -768,9 +768,9 @@
       <li>${keep?.god
         ? `已戴 <strong>${keep.nameZh}</strong>，先拿 <strong>${GODS[leadGod].nameZh}</strong> 核心欄位。`
         : `戴上 <strong>${GODS[aspect.gods[0]].nameZh}</strong> 信物，先鎖定核心欄位。`}</li>
-      <li>第二優先：<strong>${GODS[others[0] || aspect.gods[1]]?.nameZh || "荷米斯"}</strong>，為雙重神恩鋪路。</li>
-      <li>第三：<strong>${GODS[others[1]]?.nameZh || "荷米斯"}</strong> 或生存向神恩。</li>
-      <li>夜之鏡：<strong>${infernal ? "煉獄靈魂" : "冥河靈魂"}</strong>${infernal ? "（可衝避雷針／滿載／更大召回）" : "（可衝壞消息；避雷針與滿載不可用）"}。</li>
+      <li>第二優先：<strong>${GODS[others[0] || aspect.gods[1]]?.nameZh || "赫爾墨斯"}</strong>，為雙重祝福鋪路。</li>
+      <li>第三：<strong>${GODS[others[1]]?.nameZh || "赫爾墨斯"}</strong> 或生存向祝福。</li>
+      <li>夜之聖鏡：<strong>${infernal ? "煉獄靈魂" : "冥河靈魂"}</strong>${infernal ? "（可衝引電血統／全副武裝／自動收回）" : "（可衝當頭一棒；引電血統與全副武裝不可用）"}。</li>
       <li>對應雙重：${(aspect.duos || []).map((id) => duoOf(id)?.nameZh || id).join("、")}。</li>
     `;
   }
@@ -784,14 +784,14 @@
     const hammers = HAMMERS.filter((h) => h.weapon === state.weaponId);
     el.innerHTML = `
       <section class="sys-block">
-        <h3>夜之鏡</h3>
+        <h3>夜之聖鏡</h3>
         <div class="sys-toggle" role="group" aria-label="靈魂">
           <button type="button" class="sys-chip ${infernal ? "is-on" : ""}" data-soul="infernal">煉獄靈魂</button>
           <button type="button" class="sys-chip ${!infernal ? "is-on" : ""}" data-soul="stygian">冥河靈魂</button>
         </div>
         <p class="sys-note">${infernal
-          ? "血石會掉落。可拿避雷針、滿載、更大召回、退出傷口。"
-          : "血石自動回補。可拿自動裝填與壞消息。避雷針、滿載、更大召回與退出傷口無法使用。"}</p>
+          ? "血石會掉落。可拿引電血統、全副武裝、自動收回、拔箭留瘡。"
+          : "血石自動回補。可拿自動填彈與當頭一棒。引電血統、全副武裝、自動收回與拔箭留瘡無法使用。"}</p>
       </section>
       <section class="sys-block">
         <h3>信物</h3>
@@ -802,7 +802,7 @@
             return `<button type="button" class="sys-chip ${state.keepsake === k.id ? "is-on" : ""}" data-keepsake="${k.id}" ${g ? `style="--g:${g.color}"` : ""}>${k.nameZh}</button>`;
           }).join("")}
         </div>
-        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點奧林帕斯信物，下一個神恩房間會出現該神。也可點下方地區套用建議。"} 規劃用精簡清單，未收錄全部信物。</p>
+        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點奧林帕斯信物，下一個祝福房間會出現該神。也可點下方地區套用建議。"} 規劃用精簡清單，未收錄全部信物。</p>
         <ol class="keepsake-route">
           ${keepsakeRoute(aspect).map((row) => {
             const item = KEEPSAKE_MAP[row.keepsakeId];
@@ -818,7 +818,7 @@
         </ol>
       </section>
       <section class="sys-block hammer-block">
-        <h3>代達羅斯鍛鎚</h3>
+        <h3>狄德勒斯之錘</h3>
         <div class="hammer-pills">
           ${hammers.map((h) => {
             const rec = h.rec?.includes(aspect.id);
@@ -826,7 +826,7 @@
             return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-hammer="${h.id}" title="${h.effectZh}">${h.nameZh}${rec ? " · 建議" : ""}</button>`;
           }).join("")}
         </div>
-        <p class="sys-note hammer-note">僅列出此兵器較常用的鍛鎚，可勾選本輪已拿到的。卡俄斯神恩不進雙重，故未列入。</p>
+        <p class="sys-note hammer-note">僅列出此兵器較常用的錘改造，可勾選本輪已拿到的。卡俄斯祝福不進雙重，故未列入。</p>
       </section>
     `;
   }
@@ -889,8 +889,8 @@
       hint.hidden = !state.runMode;
       hint.classList.toggle("is-visible", waiting);
       hint.textContent = waiting
-        ? `點上方欄位，快速勾選本輪神恩。建議優先：${aspect.gods.map((id) => GODS[id].nameZh).join("、")}。`
-        : "正在顯示對應神恩；再點一次欄位可回到提示。";
+        ? `點上方欄位，快速勾選本輪祝福。建議優先：${aspect.gods.map((id) => GODS[id].nameZh).join("、")}。`
+        : "正在顯示對應祝福；再點一次欄位可回到提示。";
     }
 
     const neededIds = neededBoonIds();
@@ -917,7 +917,7 @@
       return `<article class="god-block" style="--g:${g.color}">
         <div class="god-block-head">
           <strong>${g.nameZh} · ${g.name}</strong>
-          <small>${rec ? "本型態建議" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重神恩"}</small>
+          <small>${rec ? "本型態建議" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重祝福"}</small>
         </div>
         <div class="boon-grid">
           ${grouped[gid].map((b) => {
@@ -939,11 +939,11 @@
     }).join("");
 
     const emptyNote = hiddenCount
-      ? `<p class="meta hide-note">已隱藏 ${hiddenCount} 道不相容神恩（同欄位、夜之鏡或型態）。取消勾選或搜尋名稱可再顯示。</p>`
-      : `<p class="meta">沒有符合的神恩。</p>`;
+      ? `<p class="meta hide-note">已隱藏 ${hiddenCount} 道不相容祝福（同欄位、夜之聖鏡或型態）。取消勾選或搜尋名稱可再顯示。</p>`
+      : `<p class="meta">沒有符合的祝福。</p>`;
     board.innerHTML = blocks || (waiting ? "" : emptyNote);
     if (blocks && hiddenCount) {
-      board.insertAdjacentHTML("afterbegin", `<p class="meta hide-note">已依目前勾選隱藏 ${hiddenCount} 道不相容神恩。取消該欄位或搜尋名稱可再顯示。</p>`);
+      board.insertAdjacentHTML("afterbegin", `<p class="meta hide-note">已依目前勾選隱藏 ${hiddenCount} 道不相容祝福。取消該欄位或搜尋名稱可再顯示。</p>`);
     }
   }
 
@@ -1069,7 +1069,7 @@
           open ? "is-open" : "",
         ].join(" ");
         const summaryLine = blocked
-          ? `<p class="warn">需要夜之鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>`
+          ? `<p class="warn">需要夜之聖鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>`
           : selected
             ? `<p class="warn" style="color:#8ee0ad">已勾選</p>`
             : met
@@ -1078,7 +1078,7 @@
         return `<article class="duo-card ${cls}" data-legend="${boon.id}" style="--g1:${god.color};--g2:${god.color}">
           <div class="duo-names">
             <strong>${boon.nameZh}</strong>
-            <small>${god.nameZh} · 傳說</small>
+            <small>${god.nameZh} · 傳奇</small>
           </div>
           <div class="progress"><span style="width:${(progress / total) * 100}%"></span></div>
           <p class="duo-req">${boon.effectZh}</p>
@@ -1106,11 +1106,11 @@
       const closeOne = !met;
       return `<button type="button" class="run-pill ${met ? "is-ready" : "is-close"} ${state.expandedLegend === boon.id ? "is-open" : ""}" data-legend="${boon.id}" data-run-legend="1">
         <strong>${boon.nameZh}</strong>
-        <small>${met ? "傳說可領取" : `還差 ${missingLabels.join("、")}`}</small>
+        <small>${met ? "傳奇可領取" : `還差 ${missingLabels.join("、")}`}</small>
       </button>`;
     });
     const pills = [...ready, ...close, ...progress, ...suggestedLocked];
-    summary.textContent = `可領取 ${ready.length}　·　還差 1 道 ${close.length}${legendReady.length || legendClose.length ? `　·　傳說 ${legendReady.length} 可領／${legendClose.length} 接近` : ""}`;
+    summary.textContent = `可領取 ${ready.length}　·　還差 1 道 ${close.length}${legendReady.length || legendClose.length ? `　·　傳奇 ${legendReady.length} 可領／${legendClose.length} 接近` : ""}`;
     const duoPills = pills.map((row) => {
         const { duo, blocked, met, obtained, exclusiveReady, progress, total, missingLabels } = row;
         const closeOne = !met && !blocked && !obtained && progress === total - 1;
@@ -1129,7 +1129,7 @@
       });
     track.innerHTML = duoPills.length || legendPills.length
       ? [...duoPills, ...legendPills].join("")
-      : `<p class="meta">勾選神恩後，即將完成的雙重與傳說會出現在這裡。</p>`;
+      : `<p class="meta">勾選祝福後，即將完成的雙重與傳奇會出現在這裡。</p>`;
   }
 
   function renderDuoSheet() {
@@ -1155,10 +1155,10 @@
       card.innerHTML = `
         <div class="duo-names">
           <strong>${boon.nameZh}</strong>
-          <small>${god.nameZh} · 傳說</small>
+          <small>${god.nameZh} · 傳奇</small>
         </div>
         <p class="duo-req" style="margin-top:8px">${boon.effectZh}</p>
-        ${gaps.blocked ? `<p class="warn">需要夜之鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>` : gaps.met ? `<p class="warn" style="color:#8ee0ad">前置已滿足，下次遇見可能提供</p>` : `<p class="duo-missing">${closeOne ? "還差：" : "還缺："}${gaps.missingLabels.join("、")}</p>`}
+        ${gaps.blocked ? `<p class="warn">需要夜之聖鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>` : gaps.met ? `<p class="warn" style="color:#8ee0ad">前置已滿足，下次遇見可能提供</p>` : `<p class="duo-missing">${closeOne ? "還差：" : "還缺："}${gaps.missingLabels.join("、")}</p>`}
         ${legendGapsMarkup(boon)}
         <button type="button" class="ghost" data-close-sheet style="margin-top:12px">關閉</button>
       `;
@@ -1266,7 +1266,7 @@
           `).join("")}
         </div>
         ${duo.notes ? `<p class="warn">${duo.notes}</p>` : ""}
-        ${duo.incompatibleAspects?.length ? `<p class="warn">不相容：${duo.incompatibleAspects.map((id) => id === "beowulf" ? "貝奧武夫" : "希拉").join("、")}型態</p>` : ""}
+        ${duo.incompatibleAspects?.length ? `<p class="warn">不相容：${duo.incompatibleAspects.map((id) => id === "beowulf" ? "貝奧武夫" : "赫拉").join("、")}型態</p>` : ""}
         ${duo.exclusiveWith?.length ? `<p class="warn">互斥：${duo.exclusiveWith.map((id) => duoOf(id)?.nameZh || id).join("、")}</p>` : ""}
         ${duo.blockedByBoons?.length ? `<p class="warn">無法與${duo.blockedByBoons.map((id) => boonOf(id)?.nameZh || id).join("、")}並存</p>` : ""}
       </article>`;
@@ -1471,7 +1471,7 @@
       renderCoreSlots();
       renderBoonBoard();
       renderDuoRail();
-      if (removed.length) toast(`已取消不相容神恩：${removed.join("、")}`);
+      if (removed.length) toast(`已取消不相容祝福：${removed.join("、")}`);
       return;
     }
 

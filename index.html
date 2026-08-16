@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#090505" />
-  <title>冥府祝福 · Hades 神恩規劃</title>
-  <meta name="description" content="依冥府兵器與型態，規劃奧林帕斯神恩與雙重神恩。" />
+  <title>冥府祝福 · Hades 祝福規劃</title>
+  <meta name="description" content="依冥府兵器與型態，規劃奧林帕斯祝福與雙重祝福。" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23c9a227' d='M32 4l6 18h18l-14 11 6 18-16-12-16 12 6-18-14-11h18z'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,8 +42,8 @@
     </button>
     <nav class="tabs" role="tablist">
       <button class="tab is-active" data-view="armory" type="button">軍械庫</button>
-      <button class="tab" data-view="planner" type="button">神恩規劃</button>
-      <button class="tab" data-view="duos" type="button">雙重神恩</button>
+      <button class="tab" data-view="planner" type="button">祝福規劃</button>
+      <button class="tab" data-view="duos" type="button">雙重祝福</button>
       <button class="tab run-toggle" id="run-toggle" type="button">本輪模式</button>
       <button class="ghost share-btn" id="share-build" type="button">分享配裝</button>
     </nav>
@@ -54,7 +54,7 @@
       <div class="hero">
         <p class="eyebrow">House of Hades · Arsenal</p>
         <h1>選擇你的冥府兵器</h1>
-        <p class="lede">六把煉獄兵器，各有四種型態。選定武器與型態後，再決定要追隨哪些奧林帕斯神，並鎖定可達成的雙重神恩。</p>
+        <p class="lede">六把煉獄兵器，各有四種型態。選定武器與型態後，再決定要追隨哪些奧林帕斯神，並鎖定可達成的雙重祝福。</p>
       </div>
       <div class="weapon-grid" id="weapon-grid"></div>
     </section>
@@ -76,7 +76,7 @@
       <div class="planner-empty" id="planner-empty">
         <p class="eyebrow">No arm selected</p>
         <h2>尚未選定兵器</h2>
-        <p>先到軍械庫選擇武器與型態，再開始勾選本輪神恩。</p>
+        <p>先到軍械庫選擇武器與型態，再開始勾選本輪祝福。</p>
         <button class="gold" data-goto="armory" type="button">前往軍械庫</button>
       </div>
       <div class="planner" id="planner" hidden>
@@ -95,21 +95,21 @@
           <div class="planner-toolbar">
             <div class="god-filters" id="god-filters"></div>
             <label class="search">
-              <span class="sr-only">搜尋神恩</span>
-              <input id="boon-search" type="search" placeholder="搜尋神恩名稱…" />
+              <span class="sr-only">搜尋祝福</span>
+              <input id="boon-search" type="search" placeholder="搜尋祝福名稱…" />
             </label>
           </div>
-          <p class="run-hint" id="run-hint" hidden>點上方欄位，快速勾選本輪神恩。</p>
+          <p class="run-hint" id="run-hint" hidden>點上方欄位，快速勾選本輪祝福。</p>
           <div class="boon-board" id="boon-board"></div>
         </div>
         <aside class="duo-rail">
           <div class="duo-rail-head">
-            <h3>雙重神恩追蹤</h3>
-            <p id="duo-summary">點選卡片查看還缺什麼，再跳到對應神恩</p>
+            <h3>雙重祝福追蹤</h3>
+            <p id="duo-summary">點選卡片查看還缺什麼，再跳到對應祝福</p>
           </div>
           <div class="duo-list" id="duo-list"></div>
           <div class="legend-rail-head">
-            <h3>傳說神恩</h3>
+            <h3>傳奇祝福</h3>
             <p id="legend-summary">依目前勾選計算前置</p>
           </div>
           <div class="legend-list" id="legend-list"></div>
@@ -127,8 +127,8 @@
     <section id="view-duos" class="view" data-view="duos">
       <div class="hero compact">
         <p class="eyebrow">28 Duo Boons</p>
-        <h1>奧林帕斯雙重神恩</h1>
-        <p class="lede">八位奧林帕斯神兩兩各有一道雙重神恩。荷米斯與卡俄斯不參與。點選兩位神可篩選他們的組合。</p>
+        <h1>奧林帕斯雙重祝福</h1>
+        <p class="lede">八位奧林帕斯神兩兩各有一道雙重祝福。赫爾墨斯與卡俄斯不參與。點選兩位神可篩選他們的組合。</p>
       </div>
       <div class="duo-god-row" id="duo-god-row"></div>
       <div class="duo-catalog" id="duo-catalog"></div>
