@@ -150,7 +150,7 @@
     }
     if (view === "duos") {
       state.view = "duos";
-      state.duoGods = segs.slice(1).filter((id) => GODS[id] && id !== "hermes").slice(0, 2);
+      state.duoGods = segs.slice(1).filter((id) => GODS[id] && !GODS[id].noDuo).slice(0, 2);
       return true;
     }
     if (view === "aspect") {
@@ -322,16 +322,90 @@
     return KEEPSAKES.find((k) => k.god === godId)?.id || "";
   }
 
+  const DEFAULT_EXTRAS = {
+    artemis: ["pressure-points", "support-fire", "clean-kill"],
+    athena: ["blinding-flash", "bronze-skin"],
+    aphrodite: ["broken-resolve", "different-league"],
+    zeus: ["static-discharge", "billowing-strength"],
+    poseidon: ["razor-shoals", "hydraulic-might"],
+    ares: ["impending-doom", "dire-misfortune"],
+    dionysus: ["premium-vintage", "strong-drink"],
+    demeter: ["ravenous-will", "rare-crop"],
+    hermes: ["greater-evasion", "hyper-sprint"],
+  };
+
+  function aspectCoreIds(aspect) {
+    const order = ["attack", "special", "cast", "dash", "call"];
+    return order.map((s) => aspect?.slots?.[s]).filter(Boolean);
+  }
+
+  function aspectExtraIds(aspect) {
+    if (aspect?.extras) return aspect.extras;
+    const core = new Set(aspectCoreIds(aspect));
+    const ids = [];
+    (aspect?.gods || []).forEach((g) => {
+      (DEFAULT_EXTRAS[g] || []).forEach((id) => {
+        if (!core.has(id) && !ids.includes(id) && BOON_MAP[id]) ids.push(id);
+      });
+    });
+    return ids.slice(0, 4);
+  }
+
+  function aspectPomIds(aspect) {
+    if (aspect?.pom) return aspect.pom;
+    return [...aspectCoreIds(aspect), ...aspectExtraIds(aspect).slice(0, 2)];
+  }
+
   function keepsakeRoute(aspect) {
     const gods = aspect?.gods || [];
-    const third = gods[2] ? godKeepsake(gods[2]) : "lambent-plume";
+    const g0 = godKeepsake(gods[0]);
+    const g1 = godKeepsake(gods[1]);
+    const g2 = gods[2] ? godKeepsake(gods[2]) : "lambent-plume";
+    const n0 = gods[0] ? GODS[gods[0]].nameZh : "核心神";
+    const n1 = gods[1] ? GODS[gods[1]].nameZh : "第二神";
+    const n2 = gods[2] ? GODS[gods[2]].nameZh : "赫爾墨斯";
     return [
-      { region: REGIONS[0], keepsakeId: godKeepsake(gods[0]), why: gods[0] ? `先鎖定 ${GODS[gods[0]].nameZh}` : "先鎖核心欄位" },
-      { region: REGIONS[1], keepsakeId: godKeepsake(gods[1]), why: gods[1] ? `鋪 ${GODS[gods[1]].nameZh} 雙重` : "第二位神" },
-      { region: REGIONS[2], keepsakeId: third, why: gods[2] ? `${GODS[gods[2]].nameZh} 或生存` : "赫爾墨斯羽毛疊閃避" },
-      { region: REGIONS[3], keepsakeId: "lucky-tooth", why: "額外死亡反抗" },
-      { region: REGIONS[4], keepsakeId: "evergreen-acorn", why: "首領戰減傷" },
+      { region: REGIONS[0], duringId: g0, bossId: "evergreen-acorn", duringWhy: `區內鎖 ${n0}`, bossWhy: "復仇女神前換橡子" },
+      { region: REGIONS[1], duringId: g1, bossId: "evergreen-acorn", duringWhy: `區內鋪 ${n1}`, bossWhy: "海德拉前換橡子" },
+      { region: REGIONS[2], duringId: g2, bossId: "evergreen-acorn", duringWhy: `區內 ${n2} 或羽毛`, bossWhy: "忒修斯前換橡子" },
+      { region: REGIONS[3], duringId: "lucky-tooth", bossId: "lambent-plume", duringWhy: "牙齒保命", bossWhy: "或繼續疊羽毛" },
+      { region: REGIONS[4], duringId: "evergreen-acorn", bossId: "lucky-tooth", duringWhy: "黑帝斯戰橡子", bossWhy: "或牙齒保命" },
     ];
+  }
+
+  function exclusiveHammerIds(hammer) {
+    const ids = new Set(hammer?.exclusiveWith || []);
+    HAMMERS.forEach((h) => {
+      if (h.id !== hammer?.id && h.weapon === hammer?.weapon && h.exclusiveWith?.includes(hammer.id)) {
+        ids.add(h.id);
+      }
+    });
+    return [...ids];
+  }
+
+  function hammerBlockedBy(hammer) {
+    return exclusiveHammerIds(hammer).map((id) => HAMMER_MAP[id]).find((h) => h && state.hammers.has(h.id)) || null;
+  }
+
+  function toggleHammer(id) {
+    const hammer = HAMMER_MAP[id];
+    if (!hammer) return;
+    const removed = [];
+    if (state.hammers.has(id)) {
+      state.hammers.delete(id);
+    } else {
+      exclusiveHammerIds(hammer).forEach((other) => {
+        if (state.hammers.has(other)) {
+          state.hammers.delete(other);
+          removed.push(HAMMER_MAP[other]?.nameZh || other);
+        }
+      });
+      state.hammers.add(id);
+    }
+    persist();
+    renderRunSystems();
+    renderCoreSlots();
+    if (removed.length) toast(`已取消互斥錘：${removed.join("、")}`);
   }
 
   function stripIncompatibleBoons() {
@@ -499,27 +573,33 @@
     return new Set(aspectOf()?.duos || []);
   }
 
+  function collectGapMissing(gaps, ids) {
+    gaps.gods.forEach((g) => {
+      if (!g.met) g.missing.forEach((id) => ids.add(id));
+    });
+    if (gaps.extra && !gaps.extra.met && gaps.extra.missing) {
+      gaps.extra.missing.forEach((id) => ids.add(id));
+    }
+  }
+
   function neededBoonIds() {
     const ids = new Set();
     const duo = duoOf(state.expandedDuo);
-    if (duo) {
-      const gaps = duoGaps(duo);
-      gaps.gods.forEach((g) => {
-        if (!g.met) g.missing.forEach((id) => ids.add(id));
-      });
-      if (gaps.extra?.type === "revenge" && !gaps.extra.met) {
-        gaps.extra.missing.forEach((id) => ids.add(id));
-      }
-      if (gaps.extra?.type === "aid" && !gaps.extra.met) {
-        gaps.extra.missing.forEach((id) => ids.add(id));
-      }
-    }
+    if (duo) collectGapMissing(duoGaps(duo), ids);
     const legend = boonOf(state.expandedLegend);
     if (legend) {
       legendaryGaps(legend).rows.forEach((row) => {
         if (!row.met && row.missing) row.missing.forEach((id) => ids.add(id));
       });
     }
+    const suggested = suggestedDuoIds();
+    DUOS.forEach((d) => {
+      if (suggested.size && !suggested.has(d.id)) return;
+      const gaps = duoGaps(d);
+      if (gaps.obtained || gaps.blocked || gaps.met) return;
+      if (gaps.progress !== gaps.total - 1) return;
+      collectGapMissing(gaps, ids);
+    });
     return ids;
   }
 
@@ -761,17 +841,26 @@
     const list = $("#priority-list");
     if (!aspect || !list) return;
     const keep = keepsakeOf();
-    const leadGod = keep?.god || aspect.gods[0];
-    const others = aspect.gods.filter((id) => id !== leadGod);
+    const leadGod = keep?.god && !GODS[keep.god]?.noDuo ? keep.god : aspect.gods[0];
+    const second = aspect.gods.find((id) => id !== leadGod) || aspect.gods[1];
     const infernal = state.soul !== "stygian";
+    const core = aspectCoreIds(aspect).map((id) => {
+      const b = boonOf(id);
+      if (!b) return "";
+      return `${SLOT_LABELS[b.slot] || ""}：${displayBoonName(b).nameZh}`;
+    }).filter(Boolean);
+    const extras = aspectExtraIds(aspect).map((id) => boonOf(id)?.nameZh).filter(Boolean);
+    const pom = aspectPomIds(aspect).map((id) => boonOf(id)?.nameZh).filter(Boolean);
+    const duos = (aspect.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
     list.innerHTML = `
-      <li>${keep?.god
-        ? `已戴 <strong>${keep.nameZh}</strong>，先拿 <strong>${GODS[leadGod].nameZh}</strong> 核心欄位。`
-        : `戴上 <strong>${GODS[aspect.gods[0]].nameZh}</strong> 信物，先鎖定核心欄位。`}</li>
-      <li>第二優先：<strong>${GODS[others[0] || aspect.gods[1]]?.nameZh || "赫爾墨斯"}</strong>，為雙重祝福鋪路。</li>
-      <li>第三：<strong>${GODS[others[1]]?.nameZh || "赫爾墨斯"}</strong> 或生存向祝福。</li>
+      <li>信物：${keep
+        ? `已戴 <strong>${keep.nameZh}</strong>，下一個祝福房鎖定 ${keep.god && GODS[keep.god] ? `<strong>${GODS[keep.god].nameZh}</strong>` : "效果"}。`
+        : `先戴 <strong>${GODS[aspect.gods[0]].nameZh}</strong> 信物，鎖核心欄位。`}</li>
+      <li>先鎖欄位：<strong>${core.join("、") || "依型態核心"}</strong>。</li>
+      ${extras.length ? `<li>被動優先：<strong>${extras.join("、")}</strong>。</li>` : ""}
+      ${pom.length ? `<li>石榴先餵：<strong>${pom.join("、")}</strong>。</li>` : ""}
+      <li>第二神：<strong>${GODS[second]?.nameZh || "赫爾墨斯"}</strong>${duos.length ? `，衝 ${duos.join("、")}` : ""}。</li>
       <li>夜之聖鏡：<strong>${infernal ? "煉獄靈魂" : "冥河靈魂"}</strong>${infernal ? "（可衝引電血統／全副武裝／自動收回）" : "（可衝當頭一棒；引電血統與全副武裝不可用）"}。</li>
-      <li>對應雙重：${(aspect.duos || []).map((id) => duoOf(id)?.nameZh || id).join("、")}。</li>
     `;
   }
 
@@ -795,24 +884,31 @@
       </section>
       <section class="sys-block">
         <h3>信物</h3>
+        <p class="sys-label">神祇</p>
         <div class="keep-pills">
           <button type="button" class="sys-chip ${!state.keepsake ? "is-on" : ""}" data-keepsake="">未佩戴</button>
-          ${KEEPSAKES.map((k) => {
-            const g = k.god ? GODS[k.god] : null;
+          ${KEEPSAKES.filter((k) => k.type === "god").map((k) => {
+            const g = GODS[k.god];
             return `<button type="button" class="sys-chip ${state.keepsake === k.id ? "is-on" : ""}" data-keepsake="${k.id}" ${g ? `style="--g:${g.color}"` : ""}>${k.nameZh}</button>`;
           }).join("")}
         </div>
-        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點奧林帕斯信物，下一個祝福房間會出現該神。也可點下方地區套用建議。"} 規劃用精簡清單，未收錄全部信物。</p>
+        <p class="sys-label">生存／其他</p>
+        <div class="keep-pills">
+          ${KEEPSAKES.filter((k) => k.type !== "god").map((k) =>
+            `<button type="button" class="sys-chip ${state.keepsake === k.id ? "is-on" : ""}" data-keepsake="${k.id}">${k.nameZh}</button>`
+          ).join("")}
+        </div>
+        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點神祇信物，下一個祝福房間會出現該神。每區打完後、進首領前換成常綠橡子。"}</p>
         <ol class="keepsake-route">
           ${keepsakeRoute(aspect).map((row) => {
-            const item = KEEPSAKE_MAP[row.keepsakeId];
-            const on = state.keepsake === row.keepsakeId;
-            return `<li>
-              <button type="button" class="route-btn ${on ? "is-on" : ""}" data-keepsake="${row.keepsakeId}">
-                <strong>${row.region.nameZh}</strong>
-                <span>${item ? item.nameZh : "—"}</span>
-                <small>${row.why}</small>
-              </button>
+            const during = KEEPSAKE_MAP[row.duringId];
+            const boss = KEEPSAKE_MAP[row.bossId];
+            return `<li class="route-item">
+              <strong>${row.region.nameZh}</strong>
+              <div class="route-picks">
+                <button type="button" class="sys-chip ${state.keepsake === row.duringId ? "is-on" : ""}" data-keepsake="${row.duringId || ""}">${during ? during.nameZh : "—"}<small>${row.duringWhy}</small></button>
+                <button type="button" class="sys-chip ${state.keepsake === row.bossId ? "is-on" : ""}" data-keepsake="${row.bossId || ""}">${boss ? boss.nameZh : "—"}<small>${row.bossWhy}</small></button>
+              </div>
             </li>`;
           }).join("")}
         </ol>
@@ -823,10 +919,12 @@
           ${hammers.map((h) => {
             const rec = h.rec?.includes(aspect.id);
             const on = state.hammers.has(h.id);
-            return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-hammer="${h.id}" title="${h.effectZh}">${h.nameZh}${rec ? " · 建議" : ""}</button>`;
+            const blocked = !on && hammerBlockedBy(h);
+            const title = blocked ? `與「${blocked.nameZh}」互斥` : h.effectZh;
+            return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""} ${blocked ? "is-blocked" : ""}" data-hammer="${h.id}" title="${title}">${h.nameZh}${rec ? " · 建議" : ""}${blocked ? " · 互斥" : ""}</button>`;
           }).join("")}
         </div>
-        <p class="sys-note hammer-note">僅列出此兵器較常用的錘改造，可勾選本輪已拿到的。卡俄斯祝福不進雙重，故未列入。</p>
+        <p class="sys-note hammer-note">勾選本輪已拿到的錘。互斥改造無法同時擁有，點選後會自動取消舊的。</p>
       </section>
     `;
   }
@@ -894,6 +992,7 @@
     }
 
     const neededIds = neededBoonIds();
+    const pomIds = new Set(aspectPomIds(aspect));
     const grouped = {};
     let hiddenCount = 0;
     if (!waiting) {
@@ -917,7 +1016,7 @@
       return `<article class="god-block" style="--g:${g.color}">
         <div class="god-block-head">
           <strong>${g.nameZh} · ${g.name}</strong>
-          <small>${rec ? "本型態建議" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重祝福"}</small>
+          <small>${rec ? "本型態建議" : gid === "chaos" ? "詛咒結束後生效" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重祝福"}</small>
         </div>
         <div class="boon-grid">
           ${grouped[gid].map((b) => {
@@ -926,9 +1025,16 @@
             const disabled = isBoonDisabled(b);
             const rec = Object.values(aspect.slots).includes(b.id);
             const needed = neededIds.has(b.id) && !on;
+            const pom = pomIds.has(b.id);
             const focus = state.highlightBoon === b.id;
-            return `<button class="boon-card ${on ? "is-on" : ""} ${disabled ? "is-disabled" : ""} ${rec ? "is-rec" : ""} ${needed ? "is-needed" : ""} ${focus ? "is-focus" : ""}" data-boon="${b.id}" id="boon-${b.id}" style="--g:${g.color}" ${disabled ? "disabled" : ""}>
+            const tags = [
+              rec ? ["core", "核心"] : null,
+              needed ? ["duo", "雙重"] : null,
+              pom ? ["pom", "石榴"] : null,
+            ].filter(Boolean);
+            return `<button class="boon-card ${on ? "is-on" : ""} ${disabled ? "is-disabled" : ""} ${rec ? "is-rec" : ""} ${needed ? "is-needed" : ""} ${pom ? "is-pom" : ""} ${focus ? "is-focus" : ""}" data-boon="${b.id}" id="boon-${b.id}" style="--g:${g.color}" ${disabled ? "disabled" : ""}>
               <span class="boon-slot">${slotZh[b.slot]}${b.slot === "legendary" ? " ★" : ""}</span>
+              ${tags.length ? `<span class="boon-tags">${tags.map(([k, t]) => `<i class="tag-${k}">${t}</i>`).join("")}</span>` : ""}
               <strong>${shown.nameZh}</strong>
               <span class="boon-en">${shown.name}</span>
               <p>${b.effectZh}</p>
@@ -1237,7 +1343,7 @@
   }
 
   function renderDuoCatalog() {
-    $("#duo-god-row").innerHTML = Object.values(GODS).filter((g) => g.id !== "hermes").map((g) => `
+    $("#duo-god-row").innerHTML = Object.values(GODS).filter((g) => !g.noDuo).map((g) => `
       <button class="duo-god ${state.duoGods.includes(g.id) ? "is-active" : ""}" data-duo-god="${g.id}" style="--g:${g.color}">${g.nameZh}</button>
     `).join("");
 
@@ -1496,12 +1602,7 @@
 
     const hammerBtn = e.target.closest("[data-hammer]");
     if (hammerBtn) {
-      const id = hammerBtn.dataset.hammer;
-      if (state.hammers.has(id)) state.hammers.delete(id);
-      else state.hammers.add(id);
-      persist();
-      renderRunSystems();
-      renderCoreSlots();
+      toggleHammer(hammerBtn.dataset.hammer);
       return;
     }
 
