@@ -167,7 +167,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
   max-width: 1180px;
   margin: 0 auto;
 }
-.weapon-card, .aspect-card, .boon-card, .duo-card, .loadout-weapon, .priority, .core-slots, .run-systems {
+.weapon-card, .aspect-card, .boon-card, .duo-card, .loadout-weapon, .priority, .core-slots, .run-systems, .picked-support {
   background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -312,13 +312,31 @@ h3 { font-size: 16px; color: var(--gold-2); }
 }
 .loadout, .duo-rail { position: sticky; top: 86px; }
 .loadout, .duo-rail, .planner-main { display: grid; gap: 14px; }
-.loadout-weapon, .priority, .core-slots, .duo-rail, .run-systems {
+.loadout-weapon, .priority, .core-slots, .duo-rail, .run-systems, .picked-support {
   padding: 16px;
   border-radius: 16px;
 }
 .loadout-weapon h2 { font-size: 22px; }
 .aspect-mini { color: var(--gold); font-family: var(--display); font-size: 12px; letter-spacing: 0.12em; }
 .core-slots { display: grid; gap: 8px; }
+.picked-support h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-2);
+  font-family: var(--display);
+}
+.picked-support .keep-pills {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.picked-support .sys-note,
+.picked-empty {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .slot-row {
   display: grid;
   grid-template-columns: 52px 1fr;
@@ -841,6 +859,14 @@ body.is-run .sys-toggle {
   overflow-x: auto;
   padding-bottom: 4px;
 }
+body.is-run .picked-support {
+  padding: 12px;
+}
+body.is-run .picked-support h3 { font-size: 11px; }
+body.is-run .picked-support .keep-pills {
+  flex-wrap: wrap;
+  overflow: visible;
+}
 body.is-run .sys-chip { flex: 0 0 auto; }
 body.is-run .god-pill { flex: 0 0 auto; padding: 8px 12px; }
 body.is-run #view-planner.view { padding-bottom: 150px; }
@@ -1005,6 +1031,7 @@ body.is-run.show-dock .run-dock {
   body:not(.is-run) .loadout { display: contents; }
   body:not(.is-run) .loadout-weapon { order: 1; }
   body:not(.is-run) .core-slots { order: 2; }
+  body:not(.is-run) .picked-support { order: 2; }
   body:not(.is-run) .planner-main { order: 3; }
   body:not(.is-run) .duo-rail { order: 4; }
   body:not(.is-run) .run-systems { order: 5; }

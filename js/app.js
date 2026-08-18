@@ -334,6 +334,18 @@
     hermes: ["greater-evasion", "hyper-sprint"],
   };
 
+  const SUPPORT_EXTRAS = {
+    zeus: ["static-discharge", "storm-lightning", "high-voltage", "double-strike"],
+    poseidon: ["razor-shoals", "typhoons-fury", "breaking-wave", "wave-pounding"],
+    athena: ["blinding-flash", "brilliant-riposte", "bronze-skin"],
+    aphrodite: ["broken-resolve", "sweet-surrender", "empty-inside"],
+    artemis: ["pressure-points", "support-fire", "clean-kill"],
+    ares: ["impending-doom", "dire-misfortune", "black-metal"],
+    dionysus: ["numbing-sensation", "peer-pressure", "high-tolerance"],
+    demeter: ["arctic-blast", "killing-freeze", "ravenous-will"],
+    hermes: ["greater-evasion", "hyper-sprint", "rush-delivery"],
+  };
+
   function aspectCoreIds(aspect) {
     const order = ["attack", "special", "cast", "dash", "call"];
     return order.map((s) => aspect?.slots?.[s]).filter(Boolean);
@@ -354,6 +366,61 @@
   function aspectPomIds(aspect) {
     if (aspect?.pom) return aspect.pom;
     return [...aspectCoreIds(aspect), ...aspectExtraIds(aspect).slice(0, 2)];
+  }
+
+  function selectedCoreGods() {
+    const gods = [];
+    for (const id of state.selected) {
+      const boon = BOON_MAP[id];
+      if (!boon || !SLOT_KEYS.includes(boon.slot)) continue;
+      if (!gods.includes(boon.god)) gods.push(boon.god);
+    }
+    return gods;
+  }
+
+  function selectedSupportBoons() {
+    return [...state.selected]
+      .map((id) => BOON_MAP[id])
+      .filter((b) => b && (b.slot === "extra" || b.slot === "legendary"))
+      .sort((a, b) => Number(a.slot === "legendary") - Number(b.slot === "legendary"));
+  }
+
+  function legendaryIsNear(boon) {
+    if (!boon || isBoonDisabled(boon) || state.selected.has(boon.id)) return false;
+    const gaps = legendaryGaps(boon);
+    if (gaps.blocked) return false;
+    return gaps.met || gaps.progress >= gaps.total - 1;
+  }
+
+  function suggestedSupportBoons() {
+    const gods = selectedCoreGods();
+    if (!gods.length) return { gods, boons: [] };
+    const boons = [];
+    const seen = new Set();
+    gods.forEach((gid) => {
+      const legends = LEGENDARIES.filter((b) => b.god === gid && legendaryIsNear(b) && !seen.has(b.id));
+      const extras = (SUPPORT_EXTRAS[gid] || []).filter((id) => {
+        if (seen.has(id) || state.selected.has(id)) return false;
+        const boon = BOON_MAP[id];
+        return boon && !isBoonDisabled(boon);
+      });
+      extras.slice(0, legends.length ? 3 : 4).forEach((id) => {
+        seen.add(id);
+        boons.push(BOON_MAP[id]);
+      });
+      legends.forEach((boon) => {
+        seen.add(boon.id);
+        boons.push(boon);
+      });
+    });
+    return { gods, boons: boons.slice(0, 8) };
+  }
+
+  function supportChip(boon, { on = false, rec = false } = {}) {
+    const shown = displayBoonName(boon);
+    const g = GODS[boon.god];
+    const star = boon.slot === "legendary" ? " ★" : "";
+    return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-jump-boon="${boon.id}" ${g ? `style="--g:${g.color}"` : ""}>${shown.nameZh}${star}</button>`;
   }
 
   function keepsakeRoute(aspect) {
@@ -820,6 +887,27 @@
         <span class="slot-value">${label}<br><small>${current ? `${god.nameZh} · 已勾選` : rec ? `${god.nameZh} · ${shown.name}` : "—"}</small>${combatRow}</span>
       </button>`;
     }).join("");
+    renderPickedSupport();
+  }
+
+  function renderPickedSupport() {
+    const el = $("#picked-support");
+    if (!el || !aspectOf()) return;
+    const picked = selectedSupportBoons();
+    const { gods, boons: suggested } = suggestedSupportBoons();
+    const godNames = gods.map((id) => GODS[id]?.nameZh).filter(Boolean);
+    el.innerHTML = `
+      <h3>其他／傳奇</h3>
+      <p class="sys-label">已勾選</p>
+      ${picked.length
+        ? `<div class="keep-pills">${picked.map((b) => supportChip(b, { on: true })).join("")}</div>`
+        : `<p class="picked-empty">尚未勾選其他或傳奇</p>`}
+      ${suggested.length ? `
+        <p class="sys-label">建議輔助</p>
+        <div class="keep-pills">${suggested.map((b) => supportChip(b, { rec: true })).join("")}</div>
+        <p class="sys-note">依目前${godNames.join("、")}方向</p>
+      ` : ""}
+    `;
   }
 
   function syncBoonCards() {
