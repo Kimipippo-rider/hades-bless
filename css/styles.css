@@ -310,7 +310,14 @@ h3 { font-size: 16px; color: var(--gold-2); }
   margin: 0 auto;
   align-items: start;
 }
-.loadout, .duo-rail { position: sticky; top: 86px; }
+.loadout, .duo-rail {
+  position: sticky;
+  top: 86px;
+  max-height: calc(100vh - 102px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
 .loadout, .duo-rail, .planner-main { display: grid; gap: 14px; }
 .loadout-weapon, .priority, .core-slots, .duo-rail, .run-systems, .picked-support {
   padding: 16px;
@@ -507,10 +514,6 @@ h3 { font-size: 16px; color: var(--gold-2); }
   text-align: left;
 }
 
-.duo-rail {
-  max-height: calc(100vh - 100px);
-  overflow: auto;
-}
 .duo-list { display: grid; gap: 10px; padding-right: 4px; }
 .legend-rail-head {
   margin-top: 8px;
@@ -799,8 +802,11 @@ body.is-run .planner {
   grid-template-columns: 1fr;
 }
 body.is-run .loadout,
-body.is-run .planner-main {
+body.is-run .planner-main,
+body.is-run .duo-rail {
   position: static;
+  max-height: none;
+  overflow: visible;
 }
 body.is-run .loadout-weapon h2 { font-size: 18px; }
 body.is-run .slot-dmg { display: none; }
@@ -929,7 +935,11 @@ body.is-run.show-dock .run-dock {
 
 @media (max-width: 1100px) {
   .planner { grid-template-columns: 1fr; }
-  .loadout, .duo-rail { position: static; }
+  .loadout, .duo-rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
   .weapon-grid, .aspect-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 600px),
@@ -1105,6 +1115,9 @@ body.is-run.show-dock .run-dock {
     display: grid;
     position: sticky;
     top: 72px;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   body:not(.is-run) .planner-main,
   body:not(.is-run) .duo-rail { grid-column: 2; }
