@@ -1069,16 +1069,26 @@
     renderRunSystems();
     renderPriorityList();
 
-    const gods = ["all", ...Object.keys(GODS)];
+    const keep = keepsakeOf();
     const hammerCount = thisWeaponHammers().length;
-    $("#god-filters").innerHTML = gods.map((id) => {
-      if (id === "all") {
-        return `<button class="god-pill ${state.godFilter === "all" ? "is-active" : ""}" data-god="all" style="--g:var(--gold)">全部</button>`;
-      }
-      const g = GODS[id];
-      const keepOn = keepsakeOf()?.god === id;
-      return `<button class="god-pill ${state.godFilter === id ? "is-active" : ""} ${keepOn ? "is-keep" : ""}" data-god="${id}" style="--g:${g.color}">${g.nameZh}${keepOn ? " · 信物" : ""}</button>`;
-    }).join("") + `<button class="god-pill ${state.godFilter === "hammer" ? "is-active" : ""} ${hammerCount ? "is-keep" : ""}" data-god="hammer" style="--g:#c4783a">狄德勒斯之錘${hammerCount ? ` · ${hammerCount}` : ""}</button>`;
+    const pills = [
+      { id: "all", label: "全部", color: "var(--gold)" },
+      ...Object.values(GODS).map((g) => ({
+        id: g.id,
+        label: keep?.god === g.id ? `${g.nameZh} · 信物` : g.nameZh,
+        color: g.color,
+        keep: keep?.god === g.id,
+      })),
+      {
+        id: "hammer",
+        label: hammerCount ? `狄德勒斯之錘 · ${hammerCount}` : "狄德勒斯之錘",
+        color: "#c4783a",
+        keep: hammerCount > 0,
+      },
+    ];
+    $("#god-filters").innerHTML = pills.map((p) =>
+      `<button class="god-pill ${state.godFilter === p.id ? "is-active" : ""} ${p.keep ? "is-keep" : ""}" data-god="${p.id}" style="--g:${p.color}">${p.label}</button>`
+    ).join("");
 
     renderBoonBoard();
     renderDuoRail();

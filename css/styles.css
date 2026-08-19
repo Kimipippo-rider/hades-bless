@@ -393,12 +393,18 @@ h3 { font-size: 16px; color: var(--gold-2); }
 
 .planner-toolbar {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
 }
-.god-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.god-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+.planner-toolbar .search,
+.planner-toolbar .search input { width: 100%; min-width: 0; }
 .god-pill, .duo-god {
   border: 1px solid color-mix(in srgb, var(--g) 50%, transparent);
   background: color-mix(in srgb, var(--g) 12%, transparent);
@@ -851,7 +857,10 @@ body.is-run .boon-en { display: none; }
 body.is-run .boon-card { min-height: 76px; padding: 14px; }
 body.is-run .boon-tags { margin: 2px 0 0; }
 body.is-run .boon-grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
-body.is-run .god-filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+body.is-run .god-filters {
+  overflow: visible;
+  flex-wrap: wrap;
+}
 body.is-run .keep-pills,
 body.is-run .hammer-pills,
 body.is-run .sys-toggle {
@@ -1009,12 +1018,16 @@ body.is-run.show-dock .run-dock {
     font-size: 16px;
   }
   .planner-toolbar { gap: 8px; }
-  .god-filters, .keep-pills, .hammer-pills, .sys-toggle, .run-dock-track {
+  .keep-pills, .hammer-pills, .sys-toggle, .run-dock-track {
     overflow-x: auto;
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-bottom: 2px;
+  }
+  .god-filters {
+    overflow: visible;
+    flex-wrap: wrap;
   }
   .god-filters::-webkit-scrollbar,
   .keep-pills::-webkit-scrollbar,
