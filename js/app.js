@@ -489,29 +489,14 @@
     persist();
     renderRunSystems();
     renderCoreSlots();
+    renderBoonBoard();
+    const pill = $("[data-god='hammer']");
+    if (pill) {
+      const count = thisWeaponHammers().length;
+      pill.textContent = `狄德勒斯之錘${count ? ` · ${count}` : ""}`;
+      pill.classList.toggle("is-keep", count > 0);
+    }
     if (removed.length) toast(`已取消互斥錘：${[...new Set(removed)].join("、")}`);
-  }
-
-  function hammerSelectMarkup(aspect, slotIndex, slots) {
-    const selectedId = slots[slotIndex] || "";
-    const otherId = slots[1 - slotIndex] || "";
-    const list = HAMMERS.filter((h) => h.weapon === state.weaponId);
-    const rec = list.filter((h) => h.rec?.includes(aspect.id));
-    const rest = list.filter((h) => !h.rec?.includes(aspect.id));
-    const option = (h) => {
-      const blocked = otherId && exclusiveHammerIds(h).includes(otherId);
-      const recMark = h.rec?.includes(aspect.id) ? " · 建議" : "";
-      const blockMark = blocked ? " · 互斥" : "";
-      return `<option value="${h.id}" ${h.id === selectedId ? "selected" : ""}>${h.nameZh}${recMark}${blockMark}</option>`;
-    };
-    const groups = [
-      rec.length ? `<optgroup label="本型態建議">${rec.map(option).join("")}</optgroup>` : "",
-      rest.length ? `<optgroup label="${rec.length ? "其他改造" : "全部改造"}">${rest.map(option).join("")}</optgroup>` : "",
-    ].join("");
-    return `<select class="hammer-select" data-hammer-slot="${slotIndex}" aria-label="${slotIndex === 0 ? "第一把錘" : "第二把錘"}">
-      <option value="">尚未拿到</option>
-      ${groups}
-    </select>`;
   }
 
   function stripIncompatibleBoons() {
@@ -1042,23 +1027,13 @@
       </section>
       <section class="sys-block hammer-block">
         <h3>狄德勒斯之錘</h3>
-        <div class="hammer-menus">
-          <label>
-            <span>第一把</span>
-            ${hammerSelectMarkup(aspect, 0, hammerSlots)}
-          </label>
-          <label>
-            <span>第二把</span>
-            ${hammerSelectMarkup(aspect, 1, hammerSlots)}
-          </label>
-        </div>
         ${hammerSlots.length
-          ? `<ul class="hammer-picked">${hammerSlots.map((id) => {
+          ? `<div class="keep-pills">${hammerSlots.map((id) => {
             const h = HAMMER_MAP[id];
-            return `<li><strong>${h.nameZh}</strong>${h.effectZh}</li>`;
-          }).join("")}</ul>`
-          : ""}
-        <p class="sys-note hammer-note">本輪最多兩把。點選互斥改造會自動取消舊的。</p>
+            return `<button type="button" class="sys-chip is-on" data-hammer="${id}">${h.nameZh}</button>`;
+          }).join("")}</div>
+            <p class="sys-note hammer-note">${hammerSlots.map((id) => HAMMER_MAP[id].effectZh).join(" ")}</p>`
+          : `<p class="sys-note hammer-note">點上方篩選「狄德勒斯之錘」，勾選本輪拿到的改造。最多兩把。</p>`}
       </section>
     `;
   }
@@ -1095,6 +1070,7 @@
     renderPriorityList();
 
     const gods = ["all", ...Object.keys(GODS)];
+    const hammerCount = thisWeaponHammers().length;
     $("#god-filters").innerHTML = gods.map((id) => {
       if (id === "all") {
         return `<button class="god-pill ${state.godFilter === "all" ? "is-active" : ""}" data-god="all" style="--g:var(--gold)">全部</button>`;
@@ -1102,7 +1078,7 @@
       const g = GODS[id];
       const keepOn = keepsakeOf()?.god === id;
       return `<button class="god-pill ${state.godFilter === id ? "is-active" : ""} ${keepOn ? "is-keep" : ""}" data-god="${id}" style="--g:${g.color}">${g.nameZh}${keepOn ? " · 信物" : ""}</button>`;
-    }).join("");
+    }).join("") + `<button class="god-pill ${state.godFilter === "hammer" ? "is-active" : ""} ${hammerCount ? "is-keep" : ""}" data-god="hammer" style="--g:#c4783a">狄德勒斯之錘${hammerCount ? ` · ${hammerCount}` : ""}</button>`;
 
     renderBoonBoard();
     renderDuoRail();
@@ -1123,6 +1099,37 @@
       hint.textContent = waiting
         ? `點上方欄位，快速勾選本輪祝福。建議優先：${aspect.gods.map((id) => GODS[id].nameZh).join("、")}。`
         : "正在顯示對應祝福；再點一次欄位可回到提示。";
+    }
+
+    if (state.godFilter === "hammer") {
+      const slots = thisWeaponHammers();
+      const hammers = HAMMERS.filter((h) => h.weapon === state.weaponId).filter((h) => {
+        if (!q) return true;
+        return [h.name, h.nameZh, h.effectZh].join(" ").toLowerCase().includes(q);
+      });
+      board.innerHTML = `<article class="god-block" style="--g:#c4783a">
+        <div class="god-block-head">
+          <strong>狄德勒斯之錘 · Daedalus Hammer</strong>
+          <small>本輪最多兩把${slots.length ? ` · 已選 ${slots.length}` : ""}</small>
+        </div>
+        <div class="boon-grid">
+          ${hammers.map((h) => {
+            const on = slots.includes(h.id);
+            const rec = h.rec?.includes(aspect.id);
+            const blocked = !on && exclusiveHammerIds(h).some((id) => slots.includes(id));
+            const slotLabel = on ? (slots[0] === h.id ? "第一把" : "第二把") : rec ? "建議" : "改造";
+            const tags = [rec ? ["core", "建議"] : null, blocked ? ["duo", "互斥"] : null].filter(Boolean);
+            return `<button class="boon-card ${on ? "is-on" : ""} ${rec ? "is-rec" : ""} ${blocked ? "is-needed" : ""}" data-hammer="${h.id}" style="--g:#c4783a">
+              <span class="boon-slot">${slotLabel}</span>
+              ${tags.length ? `<span class="boon-tags">${tags.map(([k, t]) => `<i class="tag-${k}">${t}</i>`).join("")}</span>` : ""}
+              <strong>${h.nameZh}</strong>
+              <span class="boon-en">${h.name}</span>
+              <p>${h.effectZh}</p>
+            </button>`;
+          }).join("") || `<p class="meta">沒有符合的錘。</p>`}
+        </div>
+      </article>`;
+      return;
     }
 
     const neededIds = neededBoonIds();
@@ -1616,13 +1623,6 @@
     syncEmbers = sync;
   }
 
-  document.addEventListener("change", (e) => {
-    const hammerSel = e.target.closest("[data-hammer-slot]");
-    if (hammerSel) {
-      setHammerSlot(Number(hammerSel.dataset.hammerSlot), hammerSel.value);
-    }
-  });
-
   document.addEventListener("click", (e) => {
     if (e.target.closest("#share-build") || e.target.closest("#share-build-loadout")) {
       copyShare();
@@ -1680,6 +1680,7 @@
     if (slotBtn) {
       const slot = slotBtn.dataset.slotFilter;
       state.slotFilter = state.slotFilter === slot ? null : slot;
+      if (state.godFilter === "hammer") state.godFilter = "all";
       renderPlanner();
       return;
     }
@@ -1696,6 +1697,7 @@
     const god = e.target.closest("[data-god]");
     if (god) {
       state.godFilter = god.dataset.god;
+      if (state.godFilter === "hammer") state.slotFilter = null;
       renderPlanner();
       return;
     }
@@ -1733,7 +1735,7 @@
       $$("#god-filters [data-god]").forEach((el) => {
         const on = keep?.god && el.dataset.god === keep.god;
         el.classList.toggle("is-keep", on);
-        if (el.dataset.god !== "all") {
+        if (el.dataset.god !== "all" && el.dataset.god !== "hammer") {
           const name = GODS[el.dataset.god]?.nameZh || "";
           el.textContent = on ? `${name} · 信物` : name;
         }
