@@ -94,6 +94,7 @@
   let syncEmbers = () => {};
 
   function persist() {
+    normalizeHammers();
     localStorage.setItem("hades-selected", JSON.stringify([...state.selected]));
     if (state.weaponId) localStorage.setItem("hades-weapon", state.weaponId);
     if (state.aspectId) localStorage.setItem("hades-aspect", state.aspectId);
@@ -116,10 +117,7 @@
       parts.push(`b=${boons}`);
       if (state.soul === "stygian") parts.push("soul=stygian");
       if (state.keepsake && KEEPSAKE_MAP[state.keepsake]) parts.push(`k=${state.keepsake}`);
-      const hammers = [...state.hammers]
-        .filter((id) => HAMMER_MAP[id]?.weapon === state.weaponId)
-        .sort()
-        .join(",");
+      const hammers = thisWeaponHammers().join(",");
       if (hammers) parts.push(`h=${hammers}`);
       return `planner/${state.weaponId}/${state.aspectId}?${parts.join("&")}`;
     }
@@ -176,7 +174,7 @@
         state.keepsake = KEEPSAKE_MAP[keepId] ? keepId : "";
         const otherHammers = [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon !== weapon.id);
         const incoming = params.has("h")
-          ? params.get("h").split(",").filter((id) => HAMMER_MAP[id])
+          ? params.get("h").split(",").filter((id) => HAMMER_MAP[id]?.weapon === weapon.id).slice(0, 2)
           : [];
         state.hammers = new Set([...otherHammers, ...incoming]);
         stripIncompatibleBoons();
@@ -450,29 +448,70 @@
     return [...ids];
   }
 
-  function hammerBlockedBy(hammer) {
-    return exclusiveHammerIds(hammer).map((id) => HAMMER_MAP[id]).find((h) => h && state.hammers.has(h.id)) || null;
+  function normalizeHammers() {
+    const byWeapon = {};
+    [...state.hammers].forEach((id) => {
+      const weaponId = HAMMER_MAP[id]?.weapon;
+      if (!weaponId) return;
+      const list = byWeapon[weaponId] ||= [];
+      if (list.length < 2) list.push(id);
+    });
+    state.hammers = new Set(Object.values(byWeapon).flat());
   }
 
-  function toggleHammer(id) {
-    const hammer = HAMMER_MAP[id];
-    if (!hammer) return;
+  function thisWeaponHammers() {
+    return [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon === state.weaponId).slice(0, 2);
+  }
+
+  function setHammerSlot(slotIndex, id) {
+    const slot = slotIndex === 1 ? 1 : 0;
+    const others = [...state.hammers].filter((hid) => HAMMER_MAP[hid]?.weapon !== state.weaponId);
+    const slots = [thisWeaponHammers()[0] || "", thisWeaponHammers()[1] || ""];
+    const incoming = id && HAMMER_MAP[id]?.weapon === state.weaponId ? id : "";
+    if (slots[slot] === incoming) return;
+    if (incoming && slots[1 - slot] === incoming) slots[1 - slot] = "";
     const removed = [];
-    if (state.hammers.has(id)) {
-      state.hammers.delete(id);
-    } else {
-      exclusiveHammerIds(hammer).forEach((other) => {
-        if (state.hammers.has(other)) {
-          state.hammers.delete(other);
-          removed.push(HAMMER_MAP[other]?.nameZh || other);
+    if (incoming) {
+      exclusiveHammerIds(HAMMER_MAP[incoming]).forEach((ex) => {
+        if (ex === incoming) return;
+        if (slots[0] === ex) {
+          slots[0] = "";
+          removed.push(HAMMER_MAP[ex]?.nameZh || ex);
+        }
+        if (slots[1] === ex) {
+          slots[1] = "";
+          removed.push(HAMMER_MAP[ex]?.nameZh || ex);
         }
       });
-      state.hammers.add(id);
     }
+    slots[slot] = incoming;
+    state.hammers = new Set([...others, ...slots.filter(Boolean)]);
     persist();
     renderRunSystems();
     renderCoreSlots();
-    if (removed.length) toast(`已取消互斥錘：${removed.join("、")}`);
+    if (removed.length) toast(`已取消互斥錘：${[...new Set(removed)].join("、")}`);
+  }
+
+  function hammerSelectMarkup(aspect, slotIndex, slots) {
+    const selectedId = slots[slotIndex] || "";
+    const otherId = slots[1 - slotIndex] || "";
+    const list = HAMMERS.filter((h) => h.weapon === state.weaponId);
+    const rec = list.filter((h) => h.rec?.includes(aspect.id));
+    const rest = list.filter((h) => !h.rec?.includes(aspect.id));
+    const option = (h) => {
+      const blocked = otherId && exclusiveHammerIds(h).includes(otherId);
+      const recMark = h.rec?.includes(aspect.id) ? " · 建議" : "";
+      const blockMark = blocked ? " · 互斥" : "";
+      return `<option value="${h.id}" ${h.id === selectedId ? "selected" : ""}>${h.nameZh}${recMark}${blockMark}</option>`;
+    };
+    const groups = [
+      rec.length ? `<optgroup label="本型態建議">${rec.map(option).join("")}</optgroup>` : "",
+      rest.length ? `<optgroup label="${rec.length ? "其他改造" : "全部改造"}">${rest.map(option).join("")}</optgroup>` : "",
+    ].join("");
+    return `<select class="hammer-select" data-hammer-slot="${slotIndex}" aria-label="${slotIndex === 0 ? "第一把錘" : "第二把錘"}">
+      <option value="">尚未拿到</option>
+      ${groups}
+    </select>`;
   }
 
   function stripIncompatibleBoons() {
@@ -958,7 +997,7 @@
     if (!el || !aspect) return;
     const keep = keepsakeOf();
     const infernal = state.soul !== "stygian";
-    const hammers = HAMMERS.filter((h) => h.weapon === state.weaponId);
+    const hammerSlots = thisWeaponHammers();
     el.innerHTML = `
       <section class="sys-block">
         <h3>夜之聖鏡</h3>
@@ -1003,16 +1042,23 @@
       </section>
       <section class="sys-block hammer-block">
         <h3>狄德勒斯之錘</h3>
-        <div class="hammer-pills">
-          ${hammers.map((h) => {
-            const rec = h.rec?.includes(aspect.id);
-            const on = state.hammers.has(h.id);
-            const blocked = !on && hammerBlockedBy(h);
-            const title = blocked ? `與「${blocked.nameZh}」互斥` : h.effectZh;
-            return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""} ${blocked ? "is-blocked" : ""}" data-hammer="${h.id}" title="${title}">${h.nameZh}${rec ? " · 建議" : ""}${blocked ? " · 互斥" : ""}</button>`;
-          }).join("")}
+        <div class="hammer-menus">
+          <label>
+            <span>第一把</span>
+            ${hammerSelectMarkup(aspect, 0, hammerSlots)}
+          </label>
+          <label>
+            <span>第二把</span>
+            ${hammerSelectMarkup(aspect, 1, hammerSlots)}
+          </label>
         </div>
-        <p class="sys-note hammer-note">勾選本輪已拿到的錘。互斥改造無法同時擁有，點選後會自動取消舊的。</p>
+        ${hammerSlots.length
+          ? `<ul class="hammer-picked">${hammerSlots.map((id) => {
+            const h = HAMMER_MAP[id];
+            return `<li><strong>${h.nameZh}</strong>${h.effectZh}</li>`;
+          }).join("")}</ul>`
+          : ""}
+        <p class="sys-note hammer-note">本輪最多兩把。點選互斥改造會自動取消舊的。</p>
       </section>
     `;
   }
@@ -1570,6 +1616,13 @@
     syncEmbers = sync;
   }
 
+  document.addEventListener("change", (e) => {
+    const hammerSel = e.target.closest("[data-hammer-slot]");
+    if (hammerSel) {
+      setHammerSlot(Number(hammerSel.dataset.hammerSlot), hammerSel.value);
+    }
+  });
+
   document.addEventListener("click", (e) => {
     if (e.target.closest("#share-build") || e.target.closest("#share-build-loadout")) {
       copyShare();
@@ -1690,7 +1743,11 @@
 
     const hammerBtn = e.target.closest("[data-hammer]");
     if (hammerBtn) {
-      toggleHammer(hammerBtn.dataset.hammer);
+      const slots = thisWeaponHammers();
+      const id = hammerBtn.dataset.hammer;
+      const idx = slots.indexOf(id);
+      if (idx >= 0) setHammerSlot(idx, "");
+      else setHammerSlot(slots[0] ? 1 : 0, id);
       return;
     }
 
