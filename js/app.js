@@ -985,27 +985,18 @@
     const list = $("#priority-list");
     if (!school || !list) return;
     const keep = keepsakeOf();
-    const leadGod = keep?.god && !GODS[keep.god]?.noDuo ? keep.god : school.gods[0];
-    const second = school.gods.find((id) => id !== leadGod) || school.gods[1];
     const infernal = state.soul !== "stygian";
     const core = aspectCoreIds(school).map((id) => {
       const b = boonOf(id);
-      if (!b) return "";
-      return `${SLOT_LABELS[b.slot] || ""}：${displayBoonName(b).nameZh}`;
+      return b ? displayBoonName(b).nameZh : "";
     }).filter(Boolean);
-    const extras = aspectExtraIds(school).map((id) => boonOf(id)?.nameZh).filter(Boolean);
-    const pom = aspectPomIds(school).map((id) => boonOf(id)?.nameZh).filter(Boolean);
     const duos = (school.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
-    list.innerHTML = `
-      <li>信物：${keep
-        ? `已戴 <strong>${keep.nameZh}</strong>，下一個祝福房鎖定 ${keep.god && GODS[keep.god] ? `<strong>${GODS[keep.god].nameZh}</strong>` : "效果"}。`
-        : `先戴 <strong>${GODS[school.gods[0]].nameZh}</strong> 信物，鎖核心欄位。`}</li>
-      <li>先鎖欄位：<strong>${core.join("、") || "依型態核心"}</strong>。</li>
-      ${extras.length ? `<li>被動優先：<strong>${extras.join("、")}</strong>。</li>` : ""}
-      ${pom.length ? `<li>石榴先餵：<strong>${pom.join("、")}</strong>。</li>` : ""}
-      <li>第二神：<strong>${GODS[second]?.nameZh || "赫爾墨斯"}</strong>${duos.length ? `，衝 ${duos.join("、")}` : ""}。</li>
-      <li>夜之聖鏡：<strong>${infernal ? "煉獄靈魂" : "冥河靈魂"}</strong>${infernal ? "（可衝引電血統／全副武裝／自動收回）" : "（可衝當頭一棒；引電血統與全副武裝不可用）"}。</li>
-    `;
+    const keepLabel = keep
+      ? `已戴${keep.nameZh}`
+      : `${GODS[school.gods[0]]?.nameZh || "核心神"}信物`;
+    const line1 = `${keepLabel} → ${core.join(" · ") || "核心欄位"}`;
+    const line2 = [duos.length ? `衝 ${duos.join(" · ")}` : "", infernal ? "煉獄靈魂" : "冥河靈魂"].filter(Boolean).join("　·　");
+    list.innerHTML = `${line1}<br>${line2}`;
   }
 
   function renderRunSystems() {
@@ -1871,6 +1862,7 @@
       renderCoreSlots();
       renderBoonBoard();
       renderDuoRail();
+      renderPriorityList();
     }
   });
 

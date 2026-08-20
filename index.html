@@ -13,7 +13,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@700&display=swap" />
   </noscript>
-  <link rel="stylesheet" href="css/styles.css?v=6" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
   <script>
@@ -85,12 +85,7 @@
           <div class="core-slots" id="core-slots"></div>
           <div class="picked-support" id="picked-support"></div>
           <div class="run-systems" id="run-systems"></div>
-          <div class="priority">
-            <h3>本輪優先順序</h3>
-            <ol id="priority-list"></ol>
-          </div>
           <button class="gold" id="share-build-loadout" type="button">複製配裝連結</button>
-          <button class="ghost danger" id="reset-run" type="button">清空本輪勾選</button>
         </aside>
         <div class="planner-main">
           <div class="planner-toolbar">
@@ -104,6 +99,13 @@
           <div class="boon-board" id="boon-board"></div>
         </div>
         <aside class="duo-rail">
+          <div class="run-brief">
+            <div class="run-brief-head">
+              <h3>開局走向</h3>
+              <button class="ghost danger" id="reset-run" type="button">清空勾選</button>
+            </div>
+            <p id="priority-list"></p>
+          </div>
           <div class="duo-rail-head">
             <h3>雙重祝福追蹤</h3>
             <p id="duo-summary">點選卡片查看還缺什麼，再跳到對應祝福</p>
@@ -154,6 +156,6 @@
   <div class="toast" id="toast" hidden></div>
 
   <script src="js/data.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>
