@@ -1858,11 +1858,13 @@
     if (e.target.closest("#reset-run")) {
       state.selected.clear();
       state.obtainedDuos.clear();
+      state.keepsake = "";
+      state.hammers = new Set(
+        [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon !== state.weaponId)
+      );
       persist();
-      renderCoreSlots();
-      renderBoonBoard();
-      renderDuoRail();
-      renderPriorityList();
+      renderPlanner();
+      return;
     }
   });
 
