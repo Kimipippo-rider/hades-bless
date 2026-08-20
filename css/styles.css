@@ -119,6 +119,34 @@ a { color: var(--gold-2); }
   background: rgba(201, 162, 39, 0.08);
 }
 .share-btn { white-space: nowrap; }
+.share-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #160a0a;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 4px;
+}
+.share-menu[hidden] { display: none; }
+.share-menu button {
+  font-family: var(--sans);
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.share-menu button:hover,
+.share-menu button:focus-visible {
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--gold-2);
+}
 .toast {
   position: fixed;
   left: 50%;

@@ -264,6 +264,352 @@
     }
   }
 
+  const SHARE_FONT_DISPLAY = '"Cinzel", Palatino, "Songti TC", serif';
+  const SHARE_FONT_SANS = '"Noto Sans TC", "PingFang TC", "Hiragino Sans CNS", "Microsoft JhengHei", sans-serif';
+  const SHARE_FONT_SERIF = '"Noto Serif TC", "Songti TC", "LiSong Pro", Palatino, serif';
+  let shareMenuAnchor = null;
+
+  function closeShareMenu() {
+    const menu = $("#share-menu");
+    if (!menu || menu.hidden) {
+      shareMenuAnchor = null;
+      return;
+    }
+    menu.hidden = true;
+    shareMenuAnchor = null;
+    $$("[aria-controls='share-menu']").forEach((el) => el.setAttribute("aria-expanded", "false"));
+  }
+
+  function openShareMenu(anchor) {
+    const menu = $("#share-menu");
+    if (!menu || !anchor) return;
+    shareMenuAnchor = anchor;
+    menu.hidden = false;
+    $$("[aria-controls='share-menu']").forEach((el) => {
+      el.setAttribute("aria-expanded", el === anchor ? "true" : "false");
+    });
+    const r = anchor.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    let left = r.right - mw;
+    if (left < 8) left = 8;
+    if (left + mw > innerWidth - 8) left = Math.max(8, innerWidth - mw - 8);
+    let top = r.bottom + 8;
+    if (top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 8);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  function buildShareCard() {
+    const weapon = weaponOf();
+    const aspect = aspectOf();
+    if (!weapon || !aspect) return null;
+    writeHash();
+    const school = schoolOf();
+    const slots = SLOT_KEYS.map((slot) => {
+      const boon = selectedInSlot(slot);
+      const shown = boon ? displayBoonName(boon) : null;
+      const god = boon ? GODS[boon.god] : null;
+      return {
+        label: SLOT_LABELS[slot],
+        nameZh: shown?.nameZh || "—",
+        godZh: god?.nameZh || "",
+        color: god?.color || "",
+        filled: Boolean(boon),
+      };
+    });
+    const support = selectedSupportBoons().map((b) => {
+      const god = GODS[b.god];
+      return {
+        nameZh: displayBoonName(b).nameZh,
+        godZh: god?.nameZh || "",
+        color: god?.color || "",
+        legendary: b.slot === "legendary",
+      };
+    });
+    const duos = [...state.obtainedDuos]
+      .map((id) => duoOf(id))
+      .filter(Boolean)
+      .map((d) => ({
+        nameZh: d.nameZh,
+        gods: d.gods.map((g) => GODS[g]?.nameZh).filter(Boolean).join(" × "),
+      }));
+    const keep = keepsakeOf();
+    return {
+      weaponEn: `${weapon.name} · Aspect of ${aspect.name}`,
+      weaponZh: `${weapon.nameZh} · ${aspect.nameZh}`,
+      accent: weapon.accent || "#c9a227",
+      schoolZh: school?.nameZh || "",
+      soulZh: state.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂",
+      slots,
+      keepsake: keep ? keep.nameZh : "未佩戴",
+      hammers: thisWeaponHammers().map((id) => HAMMER_MAP[id]?.nameZh).filter(Boolean),
+      support,
+      duos,
+      url: location.href,
+    };
+  }
+
+  function wrapShareText(ctx, text, maxWidth) {
+    const chars = [...String(text || "")];
+    const lines = [];
+    let line = "";
+    chars.forEach((ch) => {
+      const next = line + ch;
+      if (line && ctx.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = ch;
+      } else {
+        line = next;
+      }
+    });
+    if (line) lines.push(line);
+    return lines.length ? lines : [""];
+  }
+
+  function roundShareRect(ctx, x, y, w, h, r) {
+    const rad = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, rad);
+    else ctx.rect(x, y, w, h);
+  }
+
+  function drawShareChip(ctx, x, y, text, color) {
+    ctx.font = `700 20px ${SHARE_FONT_SANS}`;
+    const padX = 16;
+    const h = 36;
+    const w = ctx.measureText(text).width + padX * 2;
+    roundShareRect(ctx, x, y, w, h, 18);
+    ctx.fillStyle = "rgba(201, 162, 39, 0.10)";
+    ctx.fill();
+    ctx.strokeStyle = color || "rgba(201, 162, 39, 0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#f0d37a";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x + padX, y + h / 2);
+    ctx.textBaseline = "top";
+    return w;
+  }
+
+  function drawShareMetaRow(ctx, x, y, width, label, value) {
+    ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText(label, x, y);
+    ctx.font = `700 28px ${SHARE_FONT_SANS}`;
+    ctx.fillStyle = "#f4e7c8";
+    const lines = wrapShareText(ctx, value, width);
+    lines.forEach((line, i) => ctx.fillText(line, x, y + 28 + i * 36));
+    return 28 + lines.length * 36 + 20;
+  }
+
+  function drawSharePng(card) {
+    const scale = 2;
+    const width = 1080;
+    const pad = 64;
+    const inner = width - pad * 2;
+    const measure = document.createElement("canvas").getContext("2d");
+    measure.font = `700 22px ${SHARE_FONT_SANS}`;
+    const urlLines = wrapShareText(measure, card.url, inner);
+    measure.font = `700 28px ${SHARE_FONT_SANS}`;
+    const hammerText = card.hammers.length ? card.hammers.join(" · ") : "—";
+    const keepLines = wrapShareText(measure, card.keepsake, inner);
+    const hammerLines = wrapShareText(measure, hammerText, inner);
+
+    let height = pad;
+    height += 264;
+    height += 32 + card.slots.length * 78 + 16;
+    height += 28 + keepLines.length * 36 + 20;
+    height += 28 + hammerLines.length * 36 + 20;
+    if (card.support.length) height += 40 + card.support.length * 52 + 8;
+    if (card.duos.length) height += 40 + card.duos.length * 52 + 8;
+    height += 28 + urlLines.length * 26 + pad + 48;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+
+    const bg = ctx.createLinearGradient(0, 0, 0, height);
+    bg.addColorStop(0, "#1a0a0a");
+    bg.addColorStop(0.45, "#090505");
+    bg.addColorStop(1, "#120808");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+    const glow = ctx.createRadialGradient(width * 0.5, -40, 40, width * 0.5, 80, 520);
+    glow.addColorStop(0, "rgba(138, 28, 28, 0.38)");
+    glow.addColorStop(1, "transparent");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(201, 162, 39, 0.35)";
+    ctx.lineWidth = 2;
+    roundShareRect(ctx, 18, 18, width - 36, height - 36, 28);
+    ctx.stroke();
+
+    let y = pad;
+    ctx.font = `700 18px ${SHARE_FONT_DISPLAY}`;
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText("INFERNAL BLESSINGS", pad, y);
+    y += 32;
+    ctx.font = `700 48px ${SHARE_FONT_SERIF}`;
+    ctx.fillStyle = "#f0d37a";
+    ctx.fillText("冥府祝福", pad, y);
+    y += 64;
+    ctx.font = `700 20px ${SHARE_FONT_DISPLAY}`;
+    ctx.fillStyle = card.accent || "#c9a227";
+    ctx.fillText(card.weaponEn, pad, y);
+    y += 32;
+    ctx.font = `700 40px ${SHARE_FONT_SERIF}`;
+    ctx.fillStyle = "#f4e7c8";
+    ctx.fillText(card.weaponZh, pad, y);
+    y += 56;
+
+    let chipX = pad;
+    if (card.schoolZh) chipX += drawShareChip(ctx, chipX, y, card.schoolZh, card.accent) + 10;
+    drawShareChip(ctx, chipX, y, card.soulZh, "#c9a227");
+    y += 56;
+
+    ctx.strokeStyle = "rgba(201, 162, 39, 0.28)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(width - pad, y);
+    ctx.stroke();
+    y += 24;
+
+    ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText("五欄祝福", pad, y);
+    y += 32;
+    card.slots.forEach((slot) => {
+      roundShareRect(ctx, pad, y, inner, 70, 14);
+      ctx.fillStyle = "rgba(22, 10, 10, 0.78)";
+      ctx.fill();
+      ctx.fillStyle = slot.filled ? slot.color : "rgba(201, 162, 39, 0.35)";
+      ctx.fillRect(pad, y + 10, 6, 50);
+      ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = "#b9a789";
+      ctx.fillText(slot.label, pad + 24, y + 12);
+      ctx.font = `700 26px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = slot.filled ? "#f4e7c8" : "#b9a789";
+      ctx.fillText(slot.nameZh, pad + 24, y + 36);
+      if (slot.godZh) {
+        ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+        ctx.fillStyle = slot.color || "#b9a789";
+        ctx.textAlign = "right";
+        ctx.fillText(slot.godZh, width - pad - 20, y + 26);
+        ctx.textAlign = "left";
+      }
+      y += 78;
+    });
+    y += 8;
+
+    y += drawShareMetaRow(ctx, pad, y, inner, "信物", card.keepsake);
+    y += drawShareMetaRow(ctx, pad, y, inner, "狄德勒斯之錘", hammerText);
+
+    const drawList = (title, items) => {
+      ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = "#c9a227";
+      ctx.fillText(title, pad, y);
+      y += 32;
+      items.forEach((item) => {
+        roundShareRect(ctx, pad, y, inner, 46, 12);
+        ctx.fillStyle = "rgba(22, 10, 10, 0.78)";
+        ctx.fill();
+        ctx.fillStyle = item.color || "#c9a227";
+        ctx.fillRect(pad, y + 8, 6, 30);
+        ctx.font = `700 22px ${SHARE_FONT_SANS}`;
+        ctx.fillStyle = "#f4e7c8";
+        ctx.fillText(item.nameZh, pad + 24, y + 12);
+        ctx.font = `400 16px ${SHARE_FONT_SANS}`;
+        ctx.fillStyle = "#b9a789";
+        ctx.textAlign = "right";
+        ctx.fillText(item.godZh || item.gods || "", width - pad - 18, y + 15);
+        ctx.textAlign = "left";
+        y += 52;
+      });
+      y += 8;
+    };
+    if (card.support.length) {
+      drawList("其他／傳奇", card.support.map((row) => ({
+        ...row,
+        godZh: row.legendary ? `${row.godZh} · 傳奇` : row.godZh,
+      })));
+    }
+    if (card.duos.length) drawList("已拿到雙重", card.duos);
+
+    ctx.strokeStyle = "rgba(201, 162, 39, 0.28)";
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(width - pad, y);
+    ctx.stroke();
+    y += 18;
+    ctx.font = `700 16px ${SHARE_FONT_DISPLAY}`;
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText("冥府祝福 · Infernal Blessings", pad, y);
+    y += 26;
+    ctx.font = `400 18px ${SHARE_FONT_SANS}`;
+    ctx.fillStyle = "#b9a789";
+    urlLines.forEach((line) => {
+      ctx.fillText(line, pad, y);
+      y += 26;
+    });
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("png"))), "image/png");
+    });
+  }
+
+  function downloadShareBlob(blob, name) {
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 2000);
+  }
+
+  async function exportSharePng() {
+    const card = buildShareCard();
+    if (!card) {
+      toast("先選定武器與型態");
+      return;
+    }
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      const blob = await drawSharePng(card);
+      const fileName = `冥府祝福-${card.weaponZh.replace(/\s*·\s*/g, "-").replace(/\s+/g, "")}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      try {
+        if (viewportLayout() === "phone" && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: card.weaponZh,
+            text: `Hades 配裝：${card.weaponZh}`,
+          });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+      }
+      try {
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        }
+      } catch { /* download still proceeds */ }
+      downloadShareBlob(blob, fileName);
+      toast("已下載配裝圖");
+    } catch {
+      toast("無法產生圖片，請改用複製連結");
+    }
+  }
+
   function applyRunChrome() {
     applyViewportAttrs();
     const onPlanner = state.view === "planner" && weaponOf() && aspectOf();
@@ -286,6 +632,7 @@
   }
 
   function showView(view, opts = {}) {
+    closeShareMenu();
     state.view = view;
     $$(".view").forEach((el) => el.classList.toggle("is-active", el.dataset.view === view));
     $$(".tab").forEach((el) => el.classList.toggle("is-active", el.dataset.view === (view === "aspect" ? "armory" : view)));
@@ -1669,10 +2016,21 @@
   }
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest("#share-build") || e.target.closest("#share-build-loadout")) {
-      copyShare();
+    const shareChoice = e.target.closest("[data-share]");
+    if (shareChoice) {
+      const kind = shareChoice.dataset.share;
+      closeShareMenu();
+      if (kind === "link") copyShare();
+      else if (kind === "png") exportSharePng();
       return;
     }
+    const shareTrigger = e.target.closest("#share-build, #share-build-loadout");
+    if (shareTrigger) {
+      if (shareMenuAnchor === shareTrigger) closeShareMenu();
+      else openShareMenu(shareTrigger);
+      return;
+    }
+    closeShareMenu();
 
     if (e.target.closest("#run-toggle")) {
       state.runMode = !state.runMode;
@@ -1881,6 +2239,10 @@
     persist();
     showView(state.view, { skipHash: true, keepScroll: true });
     hydrating = false;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeShareMenu();
   });
 
   hydrating = true;

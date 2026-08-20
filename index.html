@@ -13,7 +13,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@700&display=swap" />
   </noscript>
-  <link rel="stylesheet" href="css/styles.css?v=7" />
+  <link rel="stylesheet" href="css/styles.css?v=8" />
 </head>
 <body>
   <script>
@@ -45,7 +45,7 @@
       <button class="tab" data-view="planner" type="button">祝福規劃</button>
       <button class="tab" data-view="duos" type="button">雙重祝福</button>
       <button class="tab run-toggle" id="run-toggle" type="button">本輪模式</button>
-      <button class="ghost share-btn" id="share-build" type="button">分享配裝</button>
+      <button class="ghost share-btn" id="share-build" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="share-menu">分享配裝</button>
     </nav>
   </header>
 
@@ -85,7 +85,7 @@
           <div class="core-slots" id="core-slots"></div>
           <div class="picked-support" id="picked-support"></div>
           <div class="run-systems" id="run-systems"></div>
-          <button class="gold" id="share-build-loadout" type="button">複製配裝連結</button>
+          <button class="gold" id="share-build-loadout" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="share-menu">分享配裝</button>
         </aside>
         <div class="planner-main">
           <div class="planner-toolbar">
@@ -153,9 +153,13 @@
     <button class="duo-sheet-backdrop" type="button" data-close-sheet aria-label="關閉"></button>
     <div class="duo-sheet-card" id="duo-sheet-card"></div>
   </div>
+  <div class="share-menu" id="share-menu" hidden role="menu">
+    <button type="button" role="menuitem" data-share="link">複製連結</button>
+    <button type="button" role="menuitem" data-share="png">下載配裝圖</button>
+  </div>
   <div class="toast" id="toast" hidden></div>
 
   <script src="js/data.js?v=5"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>
