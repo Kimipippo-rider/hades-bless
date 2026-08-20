@@ -6,6 +6,7 @@
     view: "armory",
     weaponId: localStorage.getItem("hades-weapon") || null,
     aspectId: localStorage.getItem("hades-aspect") || null,
+    schoolId: localStorage.getItem("hades-school") || "standard",
     selected: new Set((() => {
       try { return JSON.parse(localStorage.getItem("hades-selected") || "[]"); }
       catch { return []; }
@@ -86,6 +87,31 @@
 
   const weaponOf = () => WEAPON_MAP[state.weaponId];
   const aspectOf = () => weaponOf()?.aspects.find((a) => a.id === state.aspectId);
+  function aspectSchools(aspect = aspectOf()) {
+    if (!aspect) return [];
+    const first = (aspect.notes || "").split("。").find(Boolean);
+    const standard = {
+      id: "standard",
+      nameZh: aspect.playstyle || "標準",
+      blurbZh: first ? `${first}。` : "",
+      gods: aspect.gods || [],
+      slots: aspect.slots || {},
+      duos: aspect.duos || [],
+      notes: aspect.notes || "",
+    };
+    if (aspect.extras) standard.extras = aspect.extras;
+    if (aspect.pom) standard.pom = aspect.pom;
+    return [standard, ...(aspect.schools || [])];
+  }
+  function schoolOf() {
+    const schools = aspectSchools();
+    return schools.find((s) => s.id === state.schoolId) || schools[0] || null;
+  }
+  function normalizeSchool() {
+    const schools = aspectSchools();
+    if (!schools.length) return;
+    if (!schools.some((s) => s.id === state.schoolId)) state.schoolId = "standard";
+  }
   const boonOf = (id) => BOON_MAP[id];
   const duoOf = (id) => DUO_MAP[id];
   const godOf = (id) => GODS[id];
@@ -95,9 +121,12 @@
 
   function persist() {
     normalizeHammers();
+    normalizeSchool();
     localStorage.setItem("hades-selected", JSON.stringify([...state.selected]));
     if (state.weaponId) localStorage.setItem("hades-weapon", state.weaponId);
     if (state.aspectId) localStorage.setItem("hades-aspect", state.aspectId);
+    if (state.schoolId && state.schoolId !== "standard") localStorage.setItem("hades-school", state.schoolId);
+    else localStorage.removeItem("hades-school");
     localStorage.setItem("hades-soul", state.soul);
     if (state.keepsake) localStorage.setItem("hades-keepsake", state.keepsake);
     else localStorage.removeItem("hades-keepsake");
@@ -119,6 +148,7 @@
       if (state.keepsake && KEEPSAKE_MAP[state.keepsake]) parts.push(`k=${state.keepsake}`);
       const hammers = thisWeaponHammers().join(",");
       if (hammers) parts.push(`h=${hammers}`);
+      if (state.schoolId && state.schoolId !== "standard") parts.push(`school=${state.schoolId}`);
       return `planner/${state.weaponId}/${state.aspectId}?${parts.join("&")}`;
     }
     if (state.view === "armory") return "armory";
@@ -166,6 +196,8 @@
       state.weaponId = weapon.id;
       state.aspectId = aspect.id;
       state.view = "planner";
+      if (params.has("school")) state.schoolId = params.get("school") || "standard";
+      else if (params.has("b")) state.schoolId = "standard";
       if (params.has("b")) {
         const rawB = params.get("b") || "";
         state.selected = new Set(rawB.split(",").filter((id) => id && BOON_MAP[id]));
@@ -344,16 +376,16 @@
     hermes: ["greater-evasion", "hyper-sprint", "rush-delivery"],
   };
 
-  function aspectCoreIds(aspect) {
+  function aspectCoreIds(source = schoolOf()) {
     const order = ["attack", "special", "cast", "dash", "call"];
-    return order.map((s) => aspect?.slots?.[s]).filter(Boolean);
+    return order.map((s) => source?.slots?.[s]).filter(Boolean);
   }
 
-  function aspectExtraIds(aspect) {
-    if (aspect?.extras) return aspect.extras;
-    const core = new Set(aspectCoreIds(aspect));
+  function aspectExtraIds(source = schoolOf()) {
+    if (source?.extras) return source.extras;
+    const core = new Set(aspectCoreIds(source));
     const ids = [];
-    (aspect?.gods || []).forEach((g) => {
+    (source?.gods || []).forEach((g) => {
       (DEFAULT_EXTRAS[g] || []).forEach((id) => {
         if (!core.has(id) && !ids.includes(id) && BOON_MAP[id]) ids.push(id);
       });
@@ -361,9 +393,9 @@
     return ids.slice(0, 4);
   }
 
-  function aspectPomIds(aspect) {
-    if (aspect?.pom) return aspect.pom;
-    return [...aspectCoreIds(aspect), ...aspectExtraIds(aspect).slice(0, 2)];
+  function aspectPomIds(source = schoolOf()) {
+    if (source?.pom) return source.pom;
+    return [...aspectCoreIds(source), ...aspectExtraIds(source).slice(0, 2)];
   }
 
   function selectedCoreGods() {
@@ -421,8 +453,8 @@
     return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-jump-boon="${boon.id}" ${g ? `style="--g:${g.color}"` : ""}>${shown.nameZh}${star}</button>`;
   }
 
-  function keepsakeRoute(aspect) {
-    const gods = aspect?.gods || [];
+  function keepsakeRoute(source = schoolOf()) {
+    const gods = source?.gods || [];
     const g0 = godKeepsake(gods[0]);
     const g1 = godKeepsake(gods[1]);
     const g2 = gods[2] ? godKeepsake(gods[2]) : "lambent-plume";
@@ -661,7 +693,7 @@
   }
 
   function suggestedDuoIds() {
-    return new Set(aspectOf()?.duos || []);
+    return new Set(schoolOf()?.duos || []);
   }
 
   function collectGapMissing(gaps, ids) {
@@ -889,10 +921,10 @@
   }
 
   function renderCoreSlots() {
-    const aspect = aspectOf();
-    if (!aspect) return;
+    const school = schoolOf();
+    if (!school) return;
     $("#core-slots").innerHTML = Object.keys(SLOT_LABELS).map((slot) => {
-      const rec = aspect.slots[slot] ? boonOf(aspect.slots[slot]) : null;
+      const rec = school.slots[slot] ? boonOf(school.slots[slot]) : null;
       const current = selectedInSlot(slot);
       const shown = current ? displayBoonName(current) : rec ? displayBoonName(rec) : null;
       const god = current ? GODS[current.god] : rec ? GODS[rec.god] : null;
@@ -949,25 +981,25 @@
   }
 
   function renderPriorityList() {
-    const aspect = aspectOf();
+    const school = schoolOf();
     const list = $("#priority-list");
-    if (!aspect || !list) return;
+    if (!school || !list) return;
     const keep = keepsakeOf();
-    const leadGod = keep?.god && !GODS[keep.god]?.noDuo ? keep.god : aspect.gods[0];
-    const second = aspect.gods.find((id) => id !== leadGod) || aspect.gods[1];
+    const leadGod = keep?.god && !GODS[keep.god]?.noDuo ? keep.god : school.gods[0];
+    const second = school.gods.find((id) => id !== leadGod) || school.gods[1];
     const infernal = state.soul !== "stygian";
-    const core = aspectCoreIds(aspect).map((id) => {
+    const core = aspectCoreIds(school).map((id) => {
       const b = boonOf(id);
       if (!b) return "";
       return `${SLOT_LABELS[b.slot] || ""}：${displayBoonName(b).nameZh}`;
     }).filter(Boolean);
-    const extras = aspectExtraIds(aspect).map((id) => boonOf(id)?.nameZh).filter(Boolean);
-    const pom = aspectPomIds(aspect).map((id) => boonOf(id)?.nameZh).filter(Boolean);
-    const duos = (aspect.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
+    const extras = aspectExtraIds(school).map((id) => boonOf(id)?.nameZh).filter(Boolean);
+    const pom = aspectPomIds(school).map((id) => boonOf(id)?.nameZh).filter(Boolean);
+    const duos = (school.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
     list.innerHTML = `
       <li>信物：${keep
         ? `已戴 <strong>${keep.nameZh}</strong>，下一個祝福房鎖定 ${keep.god && GODS[keep.god] ? `<strong>${GODS[keep.god].nameZh}</strong>` : "效果"}。`
-        : `先戴 <strong>${GODS[aspect.gods[0]].nameZh}</strong> 信物，鎖核心欄位。`}</li>
+        : `先戴 <strong>${GODS[school.gods[0]].nameZh}</strong> 信物，鎖核心欄位。`}</li>
       <li>先鎖欄位：<strong>${core.join("、") || "依型態核心"}</strong>。</li>
       ${extras.length ? `<li>被動優先：<strong>${extras.join("、")}</strong>。</li>` : ""}
       ${pom.length ? `<li>石榴先餵：<strong>${pom.join("、")}</strong>。</li>` : ""}
@@ -1012,7 +1044,7 @@
         </div>
         <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點神祇信物，下一個祝福房間會出現該神。每區打完後、進首領前換成常綠橡子。"}</p>
         <ol class="keepsake-route">
-          ${keepsakeRoute(aspect).map((row) => {
+          ${keepsakeRoute().map((row) => {
             const during = KEEPSAKE_MAP[row.duringId];
             const boss = KEEPSAKE_MAP[row.bossId];
             return `<li class="route-item">
@@ -1049,6 +1081,8 @@
       return;
     }
 
+    const school = schoolOf();
+    const schools = aspectSchools(aspect);
     const loadout = $("#loadout-weapon");
     loadout.style.setProperty("--accent", weapon.accent);
     loadout.innerHTML = `
@@ -1062,7 +1096,15 @@
       <p class="meta">${aspect.effectZh}</p>
       <p class="meta combat-hint">攻擊／特殊欄顯示基礎傷害與狀態，不含石榴與稀有度。</p>
       ${aspect.unlockZh ? `<p class="warn">${aspect.unlockZh}</p>` : ""}
-      ${aspect.notes ? `<p class="meta" style="margin-top:8px">${aspect.notes}</p>` : ""}
+      ${schools.length > 1 ? `
+        <div class="school-picks">
+          <div class="keep-pills" role="group" aria-label="流派">
+            ${schools.map((s) => `<button type="button" class="sys-chip ${school?.id === s.id ? "is-on" : ""}" data-school="${s.id}">${s.nameZh}</button>`).join("")}
+          </div>
+          ${school?.blurbZh ? `<p class="school-blurb">${school.blurbZh}</p>` : ""}
+        </div>
+      ` : ""}
+      ${school?.notes ? `<p class="meta" style="margin-top:8px">${school.notes}</p>` : ""}
     `;
 
     renderCoreSlots();
@@ -1106,8 +1148,9 @@
     if (hint) {
       hint.hidden = !state.runMode;
       hint.classList.toggle("is-visible", waiting);
+      const schoolGods = schoolOf()?.gods || [];
       hint.textContent = waiting
-        ? `點上方欄位，快速勾選本輪祝福。建議優先：${aspect.gods.map((id) => GODS[id].nameZh).join("、")}。`
+        ? `點上方欄位，快速勾選本輪祝福。建議優先：${schoolGods.map((id) => GODS[id].nameZh).join("、")}。`
         : "正在顯示對應祝福；再點一次欄位可回到提示。";
     }
 
@@ -1142,8 +1185,9 @@
       return;
     }
 
+    const school = schoolOf();
     const neededIds = neededBoonIds();
-    const pomIds = new Set(aspectPomIds(aspect));
+    const pomIds = new Set(aspectPomIds(school));
     const grouped = {};
     let hiddenCount = 0;
     if (!waiting) {
@@ -1163,7 +1207,7 @@
     const slotZh = Object.fromEntries(SLOTS.map((s) => [s.id, s.nameZh]));
     const blocks = Object.keys(GODS).filter((id) => grouped[id]).map((gid) => {
       const g = GODS[gid];
-      const rec = aspect.gods.includes(gid);
+      const rec = (school?.gods || []).includes(gid);
       return `<article class="god-block" style="--g:${g.color}">
         <div class="god-block-head">
           <strong>${g.nameZh} · ${g.name}</strong>
@@ -1174,7 +1218,7 @@
             const shown = displayBoonName(b);
             const on = state.selected.has(b.id);
             const disabled = isBoonDisabled(b);
-            const rec = Object.values(aspect.slots).includes(b.id);
+            const rec = Object.values(school?.slots || {}).includes(b.id);
             const needed = neededIds.has(b.id) && !on;
             const pom = pomIds.has(b.id);
             const focus = state.highlightBoon === b.id;
@@ -1681,8 +1725,17 @@
     const aspect = e.target.closest("[data-aspect]");
     if (aspect) {
       state.aspectId = aspect.dataset.aspect;
+      normalizeSchool();
       persist();
       showView("planner");
+      return;
+    }
+
+    const schoolBtn = e.target.closest("[data-school]");
+    if (schoolBtn) {
+      state.schoolId = schoolBtn.dataset.school;
+      persist();
+      renderPlanner();
       return;
     }
 
