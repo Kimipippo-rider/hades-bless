@@ -691,6 +691,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
   padding: 12px;
 }
 .boon-card {
+  position: relative;
   text-align: left;
   color: inherit;
   cursor: pointer;
@@ -759,13 +760,47 @@ h3 { font-size: 16px; color: var(--gold-2); }
 }
 .pom-pip.is-single { color: #e07a9a; }
 .pom-pip.is-double { color: #e8c35a; }
-.pom-pip.is-empty svg {
-  fill: none;
-  stroke: #e07a9a;
-  stroke-width: 1.15;
-  opacity: 0.55;
-}
 .pom-pips.is-static .pom-pip { cursor: default; pointer-events: none; }
+.pom-add {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: rgba(12, 6, 6, 0.92);
+  border: 1px solid color-mix(in srgb, #e07a9a 40%, var(--line));
+  opacity: 0;
+  pointer-events: none;
+}
+.pom-add .pom-pip {
+  width: 18px;
+  height: 20px;
+}
+.pom-add .pom-pip svg {
+  width: 18px;
+  height: 20px;
+}
+@media (hover: hover) {
+  .boon-card:hover .pom-add,
+  .boon-card:focus-within .pom-add {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (hover: none) {
+  .boon-card.is-on .pom-add {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+body.is-run .boon-card.is-on .pom-add {
+  opacity: 1;
+  pointer-events: auto;
+}
 .pom-legend {
   display: flex;
   flex-wrap: wrap;

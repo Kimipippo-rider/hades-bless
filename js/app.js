@@ -133,7 +133,7 @@
   const POM_MAX_HITS = 12;
 
   function boonCanPom(boon) {
-    return Boolean(boon && boon.slot !== "legendary");
+    return Boolean(boon && boon.slot !== "legendary" && boon.god !== "hermes" && boon.god !== "chaos");
   }
 
   function parsePomHits(raw) {
@@ -187,22 +187,39 @@
     delete state.poms[id];
   }
 
-  function cyclePom(id, index) {
+  function addPom(id, step) {
+    const n = step === 2 ? 2 : 1;
     const boon = BOON_MAP[id];
-    if (!id || !state.selected.has(id) || !boonCanPom(boon)) return;
+    if (!id || !boonCanPom(boon) || isBoonDisabled(boon)) return;
+    if (!state.selected.has(id)) {
+      if (SLOT_KEYS.includes(boon.slot)) {
+        for (const other of [...state.selected]) {
+          if (other !== id && BOON_MAP[other]?.slot === boon.slot) {
+            state.selected.delete(other);
+            clearBoonPoms(other);
+          }
+        }
+      }
+      state.selected.add(id);
+    }
+    const hits = pomHits(id);
+    if (hits.length >= POM_MAX_HITS) {
+      toast("這道祝福的石榴已記滿");
+      return;
+    }
+    state.poms[id] = [...hits, n];
+    persist();
+    renderCoreSlots();
+    renderBoonBoard();
+    renderDuoRail();
+    renderRunSystems();
+  }
+
+  function removePomHit(id, index) {
     const hits = [...pomHits(id)];
     const i = Number(index);
-    if (!Number.isInteger(i) || i < 0) return;
-    if (i === hits.length) {
-      if (hits.length >= POM_MAX_HITS) {
-        toast("這道祝福的石榴已記滿");
-        return;
-      }
-      hits.push(1);
-    } else if (i < hits.length) {
-      if (hits[i] === 1) hits[i] = 2;
-      else hits.splice(i, 1);
-    } else return;
+    if (!id || !Number.isInteger(i) || i < 0 || i >= hits.length) return;
+    hits.splice(i, 1);
     if (hits.length) state.poms[id] = hits;
     else delete state.poms[id];
     persist();
@@ -211,20 +228,25 @@
     renderRunSystems();
   }
 
+  function pomAddMarkup(boonId) {
+    const boon = BOON_MAP[boonId];
+    if (!boonCanPom(boon) || isBoonDisabled(boon)) return "";
+    return `<span class="pom-add" data-pom-boon="${boonId}">
+      <i class="pom-pip is-single" data-pom-add="1" role="button" title="力量石榴 +1">${POM_PIP_SVG}</i>
+      <i class="pom-pip is-double" data-pom-add="2" role="button" title="力量石榴 +2">${POM_PIP_SVG}</i>
+    </span>`;
+  }
+
   function pomPipsMarkup(boonId, { interactive = true } = {}) {
     if (!boonCanPom(BOON_MAP[boonId])) return "";
     if (interactive && !state.selected.has(boonId)) return "";
     const hits = pomHits(boonId);
-    if (!interactive && !hits.length) return "";
+    if (!hits.length) return "";
     const nodes = hits.map((n, i) => {
       const cls = n === 2 ? "is-double" : "is-single";
-      const hit = interactive ? ` data-pom-hit="${i}" role="button"` : "";
+      const hit = interactive ? ` data-pom-hit="${i}" role="button" title="拿掉這顆石榴"` : "";
       return `<i class="pom-pip ${cls}"${hit}>${POM_PIP_SVG}</i>`;
     });
-    if (interactive && hits.length < POM_MAX_HITS) {
-      nodes.push(`<i class="pom-pip is-empty" data-pom-hit="${hits.length}" role="button">${POM_PIP_SVG}</i>`);
-    }
-    if (!nodes.length) return "";
     return `<span class="pom-pips${interactive ? "" : " is-static"}"${interactive ? ` data-pom-boon="${boonId}"` : ""}>${nodes.join("")}</span>`;
   }
 
@@ -1850,6 +1872,7 @@
     renderKeepRail();
     renderPriorityList();
     refreshKeepGodPills();
+    renderRunSystems();
     renderDuoRail();
   }
 
@@ -1886,9 +1909,7 @@
           <i class="pom-pip is-single">${POM_PIP_SVG}</i> +1 級
           <i class="pom-pip is-double">${POM_PIP_SVG}</i> +2 級
         </p>
-        <p class="sys-note">${state.obtainedDuos.has("sweet-nectar")
-          ? "已拿到甘甜蜜露，之後石榴通常 +2。點已勾選祝福名稱旁的石榴循環：空白→粉紅+1→金+2→取消。"
-          : "點已勾選祝福名稱旁的石榴：空白→粉紅+1→金+2→取消。"}</p>
+        <p class="sys-note">游標移到祝福上，點粉紅記 +1、金色記 +2，可記多顆。點名稱旁已放上的石榴可拿掉。赫爾墨斯與卡俄斯不用石榴。</p>
       </section>
       <section class="sys-block">
         <h3>伴偶</h3>
@@ -2058,7 +2079,7 @@
             const disabled = isBoonDisabled(b);
             const rec = Object.values(school?.slots || {}).includes(b.id);
             const needed = neededIds.has(b.id) && !on;
-            const pom = pomIds.has(b.id);
+            const pom = pomIds.has(b.id) && boonCanPom(b);
             const focus = state.highlightBoon === b.id;
             const tags = [
               rec ? ["core", "核心"] : null,
@@ -2069,6 +2090,7 @@
               <span class="boon-slot">${slotZh[b.slot]}${b.slot === "legendary" ? " ★" : ""}</span>
               ${tags.length ? `<span class="boon-tags">${tags.map(([k, t]) => `<i class="tag-${k}">${t}</i>`).join("")}</span>` : ""}
               <strong>${shown.nameZh}${pomPipsMarkup(b.id)}</strong>
+              ${pomAddMarkup(b.id)}
               <span class="boon-en">${shown.name}</span>
               <p>${b.effectZh}</p>
             </button>`;
@@ -2687,12 +2709,21 @@
       return;
     }
 
+    const pomAdd = e.target.closest("[data-pom-add]");
+    if (pomAdd) {
+      e.preventDefault();
+      const id = pomAdd.closest("[data-pom-boon], [data-boon]")?.dataset.pomBoon
+        || pomAdd.closest("[data-boon]")?.dataset.boon;
+      addPom(id, Number(pomAdd.dataset.pomAdd));
+      return;
+    }
+
     const pomHit = e.target.closest("[data-pom-hit]");
     if (pomHit) {
       e.preventDefault();
       const id = pomHit.closest("[data-pom-boon], [data-boon]")?.dataset.pomBoon
         || pomHit.closest("[data-boon]")?.dataset.boon;
-      cyclePom(id, Number(pomHit.dataset.pomHit));
+      removePomHit(id, Number(pomHit.dataset.pomHit));
       return;
     }
 
