@@ -1250,12 +1250,21 @@
     return [...ids];
   }
 
+  function hammerOffAspect(hammer) {
+    const aspectId = aspectOf()?.id;
+    if (!hammer || !aspectId) return false;
+    if (hammer.onlyAspects && !hammer.onlyAspects.includes(aspectId)) return true;
+    if (hammer.blockedAspects?.includes(aspectId)) return true;
+    return false;
+  }
+
   function normalizeHammers() {
     const byWeapon = {};
     [...state.hammers].forEach((id) => {
-      const weaponId = HAMMER_MAP[id]?.weapon;
-      if (!weaponId) return;
-      const list = byWeapon[weaponId] ||= [];
+      const h = HAMMER_MAP[id];
+      if (!h) return;
+      if (h.weapon === state.weaponId && hammerOffAspect(h)) return;
+      const list = byWeapon[h.weapon] ||= [];
       if (list.length < 2) list.push(id);
     });
     state.hammers = new Set(Object.values(byWeapon).flat());
@@ -1269,7 +1278,7 @@
     const slot = slotIndex === 1 ? 1 : 0;
     const others = [...state.hammers].filter((hid) => HAMMER_MAP[hid]?.weapon !== state.weaponId);
     const slots = [thisWeaponHammers()[0] || "", thisWeaponHammers()[1] || ""];
-    const incoming = id && HAMMER_MAP[id]?.weapon === state.weaponId ? id : "";
+    const incoming = id && HAMMER_MAP[id]?.weapon === state.weaponId && !hammerOffAspect(HAMMER_MAP[id]) ? id : "";
     if (slots[slot] === incoming) return;
     if (incoming && slots[1 - slot] === incoming) slots[1 - slot] = "";
     const removed = [];
@@ -2016,6 +2025,7 @@
     if (state.godFilter === "hammer") {
       const slots = thisWeaponHammers();
       const hammers = HAMMERS.filter((h) => h.weapon === state.weaponId).filter((h) => {
+        if (hammerOffAspect(h) && !slots.includes(h.id)) return false;
         if (!q) return true;
         return [h.name, h.nameZh, h.effectZh].join(" ").toLowerCase().includes(q);
       });
