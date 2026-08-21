@@ -27,6 +27,9 @@
       try { return JSON.parse(localStorage.getItem("hades-obtained-duos") || "[]"); }
       catch { return []; }
     })()),
+    keepSlots: {},
+    keepFocus: null,
+    keepHere: "",
     expandedLegend: null,
     runMode: false,
   };
@@ -76,6 +79,99 @@
   const LEGENDARIES = BOONS.filter((b) => b.slot === "legendary");
   const SLOT_KEYS = ["attack", "special", "cast", "dash", "call"];
   const SLOT_LABELS = { attack: "攻擊", special: "特殊", cast: "投彈", dash: "衝刺", call: "求援" };
+
+  function keepIdOk(id) {
+    return id && id !== "-" && KEEPSAKE_MAP[id] ? id : "";
+  }
+
+  function emptyKeepSlots() {
+    return Object.fromEntries(REGIONS.map((r) => [r.id, ""]));
+  }
+
+  function parseKeepSlots(raw) {
+    const slots = emptyKeepSlots();
+    if (typeof raw === "string") {
+      const parts = raw.split(",");
+      const stride = parts.length >= 10 ? 2 : 1;
+      REGIONS.forEach((r, i) => {
+        slots[r.id] = keepIdOk(parts[i * stride] || "");
+      });
+      return slots;
+    }
+    if (raw && typeof raw === "object") {
+      REGIONS.forEach((r) => {
+        const row = raw[r.id];
+        if (typeof row === "string") slots[r.id] = keepIdOk(row);
+        else if (row && typeof row === "object") slots[r.id] = keepIdOk(row.during || "");
+      });
+    }
+    return slots;
+  }
+
+  function serializeKeepSlots() {
+    return REGIONS.map((r) => state.keepSlots[r.id] || "-").join(",");
+  }
+
+  function keepSlotsFilled() {
+    return REGIONS.some((r) => state.keepSlots[r.id]);
+  }
+
+  function serializeObtainedDuos() {
+    return [...state.obtainedDuos].filter((id) => DUO_MAP[id]).sort().join(",");
+  }
+
+  function parseObtainedDuos(raw) {
+    return new Set(String(raw || "").split(",").filter((id) => id && DUO_MAP[id]));
+  }
+
+  function keepSlotId(regionId) {
+    return state.keepSlots[regionId] || "";
+  }
+
+  function keepRecId(regionId) {
+    const i = REGIONS.findIndex((r) => r.id === regionId);
+    const row = i >= 0 ? keepsakeRoute()[i] : null;
+    return row?.duringId || "";
+  }
+
+  function keepRecWhy(regionId) {
+    const i = REGIONS.findIndex((r) => r.id === regionId);
+    const row = i >= 0 ? keepsakeRoute()[i] : null;
+    return row?.duringWhy || "";
+  }
+
+  function keepChipInfo(regionId) {
+    const filled = keepSlotId(regionId);
+    const rec = keepRecId(regionId);
+    const id = filled || rec || "";
+    return {
+      id,
+      keep: KEEPSAKE_MAP[id] || null,
+      filled: Boolean(filled),
+      rec: !filled && Boolean(rec),
+      current: Boolean(id) && id === state.keepsake,
+    };
+  }
+
+  function validKeepHere(id) {
+    return REGIONS.some((r) => r.id === id) ? id : "";
+  }
+
+  function keepHereWearId() {
+    if (!state.keepHere) return "";
+    return keepSlotId(state.keepHere) || keepRecId(state.keepHere) || "";
+  }
+
+  function wearKeepHere() {
+    const id = keepHereWearId();
+    if (id) state.keepsake = id;
+  }
+
+  state.keepSlots = parseKeepSlots((() => {
+    try { return JSON.parse(localStorage.getItem("hades-keep-slots") || "null"); }
+    catch { return null; }
+  })());
+  state.keepHere = validKeepHere(localStorage.getItem("hades-keep-here") || "");
   const motionLite = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function prefersLiteMotion() {
@@ -130,6 +226,9 @@
     localStorage.setItem("hades-soul", state.soul);
     if (state.keepsake) localStorage.setItem("hades-keepsake", state.keepsake);
     else localStorage.removeItem("hades-keepsake");
+    localStorage.setItem("hades-keep-slots", JSON.stringify(state.keepSlots = parseKeepSlots(state.keepSlots)));
+    if (state.keepHere) localStorage.setItem("hades-keep-here", state.keepHere);
+    else localStorage.removeItem("hades-keep-here");
     localStorage.setItem("hades-hammers", JSON.stringify([...state.hammers]));
     localStorage.setItem("hades-obtained-duos", JSON.stringify([...state.obtainedDuos]));
     if (!hydrating) writeHash();
@@ -146,6 +245,9 @@
       parts.push(`b=${boons}`);
       if (state.soul === "stygian") parts.push("soul=stygian");
       if (state.keepsake && KEEPSAKE_MAP[state.keepsake]) parts.push(`k=${state.keepsake}`);
+      if (keepSlotsFilled()) parts.push(`kr=${serializeKeepSlots()}`);
+      if (state.keepHere) parts.push(`here=${state.keepHere}`);
+      parts.push(`d=${serializeObtainedDuos()}`);
       const hammers = thisWeaponHammers().join(",");
       if (hammers) parts.push(`h=${hammers}`);
       if (state.schoolId && state.schoolId !== "standard") parts.push(`school=${state.schoolId}`);
@@ -204,6 +306,10 @@
         state.soul = params.get("soul") === "stygian" ? "stygian" : "infernal";
         const keepId = params.get("k") || "";
         state.keepsake = KEEPSAKE_MAP[keepId] ? keepId : "";
+        state.keepSlots = params.has("kr") ? parseKeepSlots(params.get("kr") || "") : emptyKeepSlots();
+        state.keepHere = validKeepHere(params.get("here") || "");
+        if (state.keepHere) wearKeepHere();
+        if (params.has("d")) state.obtainedDuos = parseObtainedDuos(params.get("d"));
         const otherHammers = [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon !== weapon.id);
         const incoming = params.has("h")
           ? params.get("h").split(",").filter((id) => HAMMER_MAP[id]?.weapon === weapon.id).slice(0, 2)
@@ -335,6 +441,7 @@
         gods: d.gods.map((g) => GODS[g]?.nameZh).filter(Boolean).join(" × "),
       }));
     const keep = keepsakeOf();
+    const here = REGIONS.find((r) => r.id === state.keepHere);
     return {
       weaponEn: `${weapon.name} · Aspect of ${aspect.name}`,
       weaponZh: `${weapon.nameZh} · ${aspect.nameZh}`,
@@ -342,11 +449,17 @@
       schoolZh: school?.nameZh || "",
       soulZh: state.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂",
       slots,
-      keepsake: keep ? keep.nameZh : "未佩戴",
+      keepsake: keep ? keep.nameZh : "",
+      hereZh: here?.nameZh || "",
+      keepRoute: REGIONS.map((r) => ({
+        label: r.nameZh,
+        value: KEEPSAKE_MAP[keepSlotId(r.id)]?.nameZh || "—",
+        filled: Boolean(keepSlotId(r.id)),
+        here: state.keepHere === r.id,
+      })),
       hammers: thisWeaponHammers().map((id) => HAMMER_MAP[id]?.nameZh).filter(Boolean),
       support,
       duos,
-      url: location.href,
     };
   }
 
@@ -375,11 +488,11 @@
   }
 
   function drawShareChip(ctx, x, y, text, color) {
-    ctx.font = `700 20px ${SHARE_FONT_SANS}`;
-    const padX = 16;
-    const h = 36;
+    ctx.font = `700 18px ${SHARE_FONT_SANS}`;
+    const padX = 14;
+    const h = 34;
     const w = ctx.measureText(text).width + padX * 2;
-    roundShareRect(ctx, x, y, w, h, 18);
+    roundShareRect(ctx, x, y, w, h, 17);
     ctx.fillStyle = "rgba(201, 162, 39, 0.10)";
     ctx.fill();
     ctx.strokeStyle = color || "rgba(201, 162, 39, 0.45)";
@@ -392,38 +505,81 @@
     return w;
   }
 
-  function drawShareMetaRow(ctx, x, y, width, label, value) {
-    ctx.font = `700 18px ${SHARE_FONT_SANS}`;
-    ctx.fillStyle = "#c9a227";
-    ctx.fillText(label, x, y);
-    ctx.font = `700 28px ${SHARE_FONT_SANS}`;
-    ctx.fillStyle = "#f4e7c8";
-    const lines = wrapShareText(ctx, value, width);
-    lines.forEach((line, i) => ctx.fillText(line, x, y + 28 + i * 36));
-    return 28 + lines.length * 36 + 20;
+  function layoutShareChips(ctx, items, maxWidth, font, padX, gap) {
+    ctx.font = font;
+    const rows = [];
+    let row = [];
+    let x = 0;
+    items.forEach((item) => {
+      const w = Math.min(maxWidth, Math.ceil(ctx.measureText(item.text).width) + padX * 2);
+      if (row.length && x + w > maxWidth) {
+        rows.push(row);
+        row = [];
+        x = 0;
+      }
+      row.push({ ...item, w });
+      x += w + gap;
+    });
+    if (row.length) rows.push(row);
+    return rows;
   }
 
   function drawSharePng(card) {
     const scale = 2;
     const width = 1080;
-    const pad = 64;
+    const pad = 56;
     const inner = width - pad * 2;
+    const gap = 12;
+    const cols = 5;
+    const tileW = (inner - gap * (cols - 1)) / cols;
+    const slotH = 172;
+    const keepH = 128;
+    const chipH = 40;
+    const chipGap = 10;
+    const chipFont = `700 20px ${SHARE_FONT_SANS}`;
     const measure = document.createElement("canvas").getContext("2d");
-    measure.font = `700 22px ${SHARE_FONT_SANS}`;
-    const urlLines = wrapShareText(measure, card.url, inner);
-    measure.font = `700 28px ${SHARE_FONT_SANS}`;
-    const hammerText = card.hammers.length ? card.hammers.join(" · ") : "—";
-    const keepLines = wrapShareText(measure, card.keepsake, inner);
-    const hammerLines = wrapShareText(measure, hammerText, inner);
+
+    const hammerChips = layoutShareChips(
+      measure,
+      card.hammers.map((text) => ({ text, color: "#c4783a" })),
+      inner,
+      chipFont,
+      16,
+      chipGap,
+    );
+    const supportChips = layoutShareChips(
+      measure,
+      card.support.map((row) => ({
+        text: row.legendary ? `${row.nameZh} · 傳奇` : row.nameZh,
+        color: row.color || "#c9a227",
+      })),
+      inner,
+      chipFont,
+      16,
+      chipGap,
+    );
+    const duoChips = layoutShareChips(
+      measure,
+      card.duos.map((row) => ({ text: row.nameZh, color: "#c9a227" })),
+      inner,
+      chipFont,
+      16,
+      chipGap,
+    );
+
+    const chipsBlock = (rows) => (rows.length ? 26 + rows.length * (chipH + 8) + 12 : 0);
+    const weaponProbe = document.createElement("canvas").getContext("2d");
+    weaponProbe.font = `700 34px ${SHARE_FONT_SERIF}`;
+    const weaponLines = wrapShareText(weaponProbe, card.weaponZh, inner);
 
     let height = pad;
-    height += 264;
-    height += 32 + card.slots.length * 78 + 16;
-    height += 28 + keepLines.length * 36 + 20;
-    height += 28 + hammerLines.length * 36 + 20;
-    if (card.support.length) height += 40 + card.support.length * 52 + 8;
-    if (card.duos.length) height += 40 + card.duos.length * 52 + 8;
-    height += 28 + urlLines.length * 26 + pad + 48;
+    height += 108 + weaponLines.length * 42 + 58;
+    height += 26 + slotH + 28;
+    height += 26 + keepH + 28;
+    height += chipsBlock(hammerChips);
+    height += chipsBlock(supportChips);
+    height += chipsBlock(duoChips);
+    height += 64 + pad;
 
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(width * scale);
@@ -435,128 +591,175 @@
 
     const bg = ctx.createLinearGradient(0, 0, 0, height);
     bg.addColorStop(0, "#1a0a0a");
-    bg.addColorStop(0.45, "#090505");
+    bg.addColorStop(0.4, "#090505");
     bg.addColorStop(1, "#120808");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
-    const glow = ctx.createRadialGradient(width * 0.5, -40, 40, width * 0.5, 80, 520);
-    glow.addColorStop(0, "rgba(138, 28, 28, 0.38)");
+    const glow = ctx.createRadialGradient(width * 0.22, 80, 20, width * 0.22, 120, 520);
+    glow.addColorStop(0, "rgba(138, 28, 28, 0.42)");
     glow.addColorStop(1, "transparent");
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, width, height);
-    ctx.strokeStyle = "rgba(201, 162, 39, 0.35)";
+    const goldGlow = ctx.createRadialGradient(width * 0.82, 70, 10, width * 0.82, 70, 280);
+    goldGlow.addColorStop(0, "rgba(201, 162, 39, 0.14)");
+    goldGlow.addColorStop(1, "transparent");
+    ctx.fillStyle = goldGlow;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = "rgba(201, 162, 39, 0.38)";
     ctx.lineWidth = 2;
-    roundShareRect(ctx, 18, 18, width - 36, height - 36, 28);
+    roundShareRect(ctx, 18, 18, width - 36, height - 36, 26);
+    ctx.stroke();
+    ctx.strokeStyle = card.accent || "#c9a227";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(18, 48);
+    ctx.lineTo(18, height - 48);
     ctx.stroke();
 
     let y = pad;
-    ctx.font = `700 18px ${SHARE_FONT_DISPLAY}`;
-    ctx.fillStyle = "#c9a227";
-    ctx.fillText("INFERNAL BLESSINGS", pad, y);
-    y += 32;
-    ctx.font = `700 48px ${SHARE_FONT_SERIF}`;
-    ctx.fillStyle = "#f0d37a";
-    ctx.fillText("冥府祝福", pad, y);
-    y += 64;
-    ctx.font = `700 20px ${SHARE_FONT_DISPLAY}`;
-    ctx.fillStyle = card.accent || "#c9a227";
-    ctx.fillText(card.weaponEn, pad, y);
-    y += 32;
-    ctx.font = `700 40px ${SHARE_FONT_SERIF}`;
-    ctx.fillStyle = "#f4e7c8";
-    ctx.fillText(card.weaponZh, pad, y);
-    y += 56;
-
-    let chipX = pad;
-    if (card.schoolZh) chipX += drawShareChip(ctx, chipX, y, card.schoolZh, card.accent) + 10;
-    drawShareChip(ctx, chipX, y, card.soulZh, "#c9a227");
-    y += 56;
-
-    ctx.strokeStyle = "rgba(201, 162, 39, 0.28)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(width - pad, y);
-    ctx.stroke();
-    y += 24;
-
-    ctx.font = `700 18px ${SHARE_FONT_SANS}`;
-    ctx.fillStyle = "#c9a227";
-    ctx.fillText("五欄祝福", pad, y);
-    y += 32;
-    card.slots.forEach((slot) => {
-      roundShareRect(ctx, pad, y, inner, 70, 14);
-      ctx.fillStyle = "rgba(22, 10, 10, 0.78)";
-      ctx.fill();
-      ctx.fillStyle = slot.filled ? slot.color : "rgba(201, 162, 39, 0.35)";
-      ctx.fillRect(pad, y + 10, 6, 50);
-      ctx.font = `700 18px ${SHARE_FONT_SANS}`;
-      ctx.fillStyle = "#b9a789";
-      ctx.fillText(slot.label, pad + 24, y + 12);
-      ctx.font = `700 26px ${SHARE_FONT_SANS}`;
-      ctx.fillStyle = slot.filled ? "#f4e7c8" : "#b9a789";
-      ctx.fillText(slot.nameZh, pad + 24, y + 36);
-      if (slot.godZh) {
-        ctx.font = `700 18px ${SHARE_FONT_SANS}`;
-        ctx.fillStyle = slot.color || "#b9a789";
-        ctx.textAlign = "right";
-        ctx.fillText(slot.godZh, width - pad - 20, y + 26);
-        ctx.textAlign = "left";
-      }
-      y += 78;
-    });
-    y += 8;
-
-    y += drawShareMetaRow(ctx, pad, y, inner, "信物", card.keepsake);
-    y += drawShareMetaRow(ctx, pad, y, inner, "狄德勒斯之錘", hammerText);
-
-    const drawList = (title, items) => {
-      ctx.font = `700 18px ${SHARE_FONT_SANS}`;
-      ctx.fillStyle = "#c9a227";
-      ctx.fillText(title, pad, y);
-      y += 32;
-      items.forEach((item) => {
-        roundShareRect(ctx, pad, y, inner, 46, 12);
-        ctx.fillStyle = "rgba(22, 10, 10, 0.78)";
-        ctx.fill();
-        ctx.fillStyle = item.color || "#c9a227";
-        ctx.fillRect(pad, y + 8, 6, 30);
-        ctx.font = `700 22px ${SHARE_FONT_SANS}`;
-        ctx.fillStyle = "#f4e7c8";
-        ctx.fillText(item.nameZh, pad + 24, y + 12);
-        ctx.font = `400 16px ${SHARE_FONT_SANS}`;
-        ctx.fillStyle = "#b9a789";
-        ctx.textAlign = "right";
-        ctx.fillText(item.godZh || item.gods || "", width - pad - 18, y + 15);
-        ctx.textAlign = "left";
-        y += 52;
-      });
-      y += 8;
-    };
-    if (card.support.length) {
-      drawList("其他／傳奇", card.support.map((row) => ({
-        ...row,
-        godZh: row.legendary ? `${row.godZh} · 傳奇` : row.godZh,
-      })));
-    }
-    if (card.duos.length) drawList("已拿到雙重", card.duos);
-
-    ctx.strokeStyle = "rgba(201, 162, 39, 0.28)";
-    ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(width - pad, y);
-    ctx.stroke();
-    y += 18;
     ctx.font = `700 16px ${SHARE_FONT_DISPLAY}`;
     ctx.fillStyle = "#c9a227";
-    ctx.fillText("冥府祝福 · Infernal Blessings", pad, y);
+    ctx.fillText("INFERNAL BLESSINGS", pad, y);
+    ctx.textAlign = "right";
+    ctx.fillText("HOUSE OF HADES", width - pad, y);
+    ctx.textAlign = "left";
+    y += 28;
+    ctx.font = `700 42px ${SHARE_FONT_SERIF}`;
+    ctx.fillStyle = "#f0d37a";
+    ctx.fillText("冥府祝福", pad, y);
+    y += 52;
+    ctx.font = `700 16px ${SHARE_FONT_DISPLAY}`;
+    ctx.fillStyle = card.accent || "#c9a227";
+    ctx.fillText(card.weaponEn, pad, y);
     y += 26;
-    ctx.font = `400 18px ${SHARE_FONT_SANS}`;
-    ctx.fillStyle = "#b9a789";
-    urlLines.forEach((line) => {
+    ctx.font = `700 34px ${SHARE_FONT_SERIF}`;
+    ctx.fillStyle = "#f4e7c8";
+    weaponLines.forEach((line) => {
       ctx.fillText(line, pad, y);
-      y += 26;
+      y += 42;
     });
+    y += 4;
+
+    let chipX = pad;
+    if (card.schoolZh) chipX += drawShareChip(ctx, chipX, y, card.schoolZh, card.accent) + 8;
+    chipX += drawShareChip(ctx, chipX, y, card.soulZh, "#c9a227") + 8;
+    if (card.keepsake) drawShareChip(ctx, chipX, y, `佩戴 ${card.keepsake}`, "#c9a227");
+    y += 50;
+
+    const rule = () => {
+      ctx.strokeStyle = "rgba(201, 162, 39, 0.28)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, y);
+      ctx.lineTo(width - pad, y);
+      ctx.stroke();
+      y += 20;
+    };
+    rule();
+
+    const sectionTitle = (left, right) => {
+      ctx.font = `700 15px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = "#c9a227";
+      ctx.fillText(left, pad, y);
+      if (right) {
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#f0d37a";
+        ctx.fillText(right, width - pad, y);
+        ctx.textAlign = "left";
+      }
+      y += 26;
+    };
+
+    const drawTiles = (items, h, paint) => {
+      items.forEach((item, i) => {
+        paint(item, pad + i * (tileW + gap), y, tileW, h);
+      });
+      y += h + 28;
+    };
+
+    sectionTitle("五欄祝福");
+    drawTiles(card.slots, slotH, (slot, x, ty, w, h) => {
+      roundShareRect(ctx, x, ty, w, h, 16);
+      ctx.fillStyle = "rgba(22, 10, 10, 0.82)";
+      ctx.fill();
+      ctx.fillStyle = slot.filled ? slot.color : "rgba(201, 162, 39, 0.28)";
+      ctx.fillRect(x, ty, 5, h);
+      ctx.font = `700 14px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = "#b9a789";
+      ctx.fillText(slot.label, x + 16, ty + 14);
+      ctx.font = `700 22px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = slot.filled ? "#f4e7c8" : "#b9a789";
+      wrapShareText(ctx, slot.nameZh, w - 28).slice(0, 3).forEach((line, li) => {
+        ctx.fillText(line, x + 16, ty + 40 + li * 28);
+      });
+      if (slot.godZh) {
+        ctx.font = `700 14px ${SHARE_FONT_SANS}`;
+        ctx.fillStyle = slot.color || "#b9a789";
+        ctx.fillText(slot.godZh, x + 16, ty + h - 28);
+      }
+    });
+
+    sectionTitle("信物路線", card.hereZh ? `在${card.hereZh}` : "");
+    drawTiles(card.keepRoute, keepH, (row, x, ty, w, h) => {
+      roundShareRect(ctx, x, ty, w, h, 16);
+      ctx.fillStyle = row.here ? "rgba(201, 162, 39, 0.12)" : "rgba(22, 10, 10, 0.82)";
+      ctx.fill();
+      if (row.here) {
+        ctx.strokeStyle = "rgba(201, 162, 39, 0.7)";
+        ctx.lineWidth = 1.5;
+        roundShareRect(ctx, x, ty, w, h, 16);
+        ctx.stroke();
+      }
+      ctx.font = `700 13px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = "#c9a227";
+      ctx.fillText(row.here ? "這裡" : row.label, x + 14, ty + 14);
+      if (row.here) {
+        ctx.fillStyle = "#b9a789";
+        ctx.fillText(row.label, x + 14, ty + 34);
+      }
+      ctx.font = `700 20px ${SHARE_FONT_SANS}`;
+      ctx.fillStyle = row.filled ? "#f4e7c8" : "#b9a789";
+      const nameY = row.here ? ty + 58 : ty + 44;
+      wrapShareText(ctx, row.value, w - 28).slice(0, 2).forEach((line, li) => {
+        ctx.fillText(line, x + 14, nameY + li * 26);
+      });
+    });
+
+    const drawChipRows = (title, rows) => {
+      if (!rows.length) return;
+      sectionTitle(title);
+      rows.forEach((row) => {
+        let x = pad;
+        row.forEach((chip) => {
+          roundShareRect(ctx, x, y, chip.w, chipH, 12);
+          ctx.fillStyle = "rgba(22, 10, 10, 0.82)";
+          ctx.fill();
+          ctx.fillStyle = chip.color || "#c9a227";
+          ctx.fillRect(x, y + 8, 4, chipH - 16);
+          ctx.font = chipFont;
+          ctx.fillStyle = "#f4e7c8";
+          ctx.textBaseline = "middle";
+          ctx.fillText(chip.text, x + 16, y + chipH / 2);
+          ctx.textBaseline = "top";
+          x += chip.w + chipGap;
+        });
+        y += chipH + 8;
+      });
+      y += 12;
+    };
+
+    drawChipRows("狄德勒斯之錘", hammerChips);
+    drawChipRows("其他／傳奇", supportChips);
+    drawChipRows("已拿到雙重", duoChips);
+
+    rule();
+    ctx.font = `700 15px ${SHARE_FONT_DISPLAY}`;
+    ctx.fillStyle = "#c9a227";
+    ctx.fillText("INFERNAL BLESSINGS", pad, y);
+    ctx.textAlign = "right";
+    ctx.fillText("冥府祝福", width - pad, y);
+    ctx.textAlign = "left";
 
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("png"))), "image/png");
@@ -1213,7 +1416,7 @@
       const keepChips = (row.keepsakes || []).map((id) => {
         const keep = KEEPSAKE_MAP[id];
         if (!keep) return "";
-        return `<button type="button" class="gap-chip" data-keepsake="${keep.id}">信物：${keep.nameZh}</button>`;
+        return `<button type="button" class="gap-chip" data-keep-pick="${keep.id}">信物：${keep.nameZh}</button>`;
       }).join("");
       return `<div class="gap-row">
         <div class="gap-label"><strong>還缺 ${row.label}</strong><span>${row.need ? `已有 ${row.have}/${row.need}` : "點名稱跳到祝福"}</span></div>
@@ -1332,6 +1535,7 @@
     const list = $("#priority-list");
     if (!school || !list) return;
     const keep = keepsakeOf();
+    const here = REGIONS.find((r) => r.id === state.keepHere);
     const infernal = state.soul !== "stygian";
     const core = aspectCoreIds(school).map((id) => {
       const b = boonOf(id);
@@ -1339,18 +1543,118 @@
     }).filter(Boolean);
     const duos = (school.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
     const keepLabel = keep
-      ? `已戴${keep.nameZh}`
+      ? (here ? `${here.nameZh} · ${keep.nameZh}` : `目前佩戴 ${keep.nameZh}`)
       : `${GODS[school.gods[0]]?.nameZh || "核心神"}信物`;
     const line1 = `${keepLabel} → ${core.join(" · ") || "核心欄位"}`;
     const line2 = [duos.length ? `衝 ${duos.join(" · ")}` : "", infernal ? "煉獄靈魂" : "冥河靈魂"].filter(Boolean).join("　·　");
     list.innerHTML = `${line1}<br>${line2}`;
   }
 
+  function keepPaletteMarkup() {
+    const keep = keepsakeOf();
+    const focusId = state.keepFocus
+      ? keepSlotId(state.keepFocus)
+      : state.keepsake;
+    const recId = state.keepFocus ? keepRecId(state.keepFocus) : "";
+    const filledFocus = state.keepFocus ? keepSlotId(state.keepFocus) : "";
+    const pill = (k) => {
+      const g = k.god ? GODS[k.god] : null;
+      const on = focusId === k.id;
+      const rec = recId === k.id && !filledFocus;
+      return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-keep-pick="${k.id}" ${g ? `style="--g:${g.color}"` : ""}>${k.nameZh}</button>`;
+    };
+    const region = REGIONS.find((r) => r.id === state.keepFocus);
+    const focusLabel = region ? region.nameZh : "";
+    return `
+      <div class="keep-palette">
+        ${focusLabel ? `<p class="sys-label">選 ${focusLabel}</p>` : ""}
+        <p class="sys-label">神祇</p>
+        <div class="keep-pills">
+          <button type="button" class="sys-chip ${!focusId ? "is-on" : ""}" data-keep-pick="">未佩戴</button>
+          ${KEEPSAKES.filter((k) => k.type === "god").map(pill).join("")}
+        </div>
+        <p class="sys-label">生存／其他</p>
+        <div class="keep-pills">
+          ${KEEPSAKES.filter((k) => k.type !== "god").map(pill).join("")}
+        </div>
+        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點清單寫入這一區。空格上的淺色是建議，再點該格可確認。"}</p>
+      </div>
+    `;
+  }
+
+  function renderKeepRail() {
+    const el = $("#keep-rail");
+    if (!el) return;
+    const aspect = aspectOf();
+    if (!aspect) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    el.hidden = false;
+    const keep = keepsakeOf();
+    const here = REGIONS.find((r) => r.id === state.keepHere);
+    const hereNote = here ? `在${here.nameZh}` : "";
+    const wearNote = keep ? `佩戴 ${keep.nameZh}` : "尚未佩戴";
+    el.innerHTML = `
+      <div class="keep-rail-head">
+        <h3>信物路線</h3>
+        <p class="keep-rail-note">${[hereNote, wearNote].filter(Boolean).join(" · ")}</p>
+      </div>
+      <div class="keep-rail-track">
+        ${REGIONS.map((region) => {
+          const isHere = state.keepHere === region.id;
+          const info = keepChipInfo(region.id);
+          const focused = state.keepFocus === region.id;
+          const why = info.rec ? `建議：${keepRecWhy(region.id)}` : (info.filled ? "開區佩戴" : "未選");
+          const name = info.keep ? info.keep.nameZh : "—";
+          const g = info.keep?.god ? GODS[info.keep.god] : null;
+          const cls = [
+            "sys-chip",
+            info.current ? "is-on" : "",
+            info.rec ? "is-rec" : "",
+            info.filled && !info.current ? "is-set" : "",
+            focused ? "is-focus" : "",
+          ].filter(Boolean).join(" ");
+          return `
+          <div class="keep-region ${isHere ? "is-here" : ""}">
+            <div class="keep-region-head">
+              <strong>${region.nameZh}</strong>
+              <button type="button" class="keep-here ${isHere ? "is-on" : ""}" data-keep-here="${region.id}" aria-pressed="${isHere}">我在這裡</button>
+            </div>
+            <button type="button" class="${cls}" data-keep-slot data-keep-region="${region.id}" ${g ? `style="--g:${g.color}"` : ""}>${name}<small>${why}</small></button>
+          </div>
+        `;
+        }).join("")}
+      </div>
+      ${state.keepFocus ? keepPaletteMarkup() : `<p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點「我在這裡」標註所在區；點格子選該區開跑要戴的信物。"}</p>`}
+    `;
+  }
+
+  function refreshKeepGodPills() {
+    const keep = keepsakeOf();
+    $$("#god-filters [data-god]").forEach((el) => {
+      const on = keep?.god && el.dataset.god === keep.god;
+      el.classList.toggle("is-keep", on);
+      if (el.dataset.god !== "all" && el.dataset.god !== "hammer") {
+        const name = GODS[el.dataset.god]?.nameZh || "";
+        el.textContent = on ? `${name} · 信物` : name;
+      }
+    });
+  }
+
+  function applyKeepChange() {
+    persist();
+    renderKeepRail();
+    renderPriorityList();
+    refreshKeepGodPills();
+    renderDuoRail();
+  }
+
   function renderRunSystems() {
     const el = $("#run-systems");
     const aspect = aspectOf();
     if (!el || !aspect) return;
-    const keep = keepsakeOf();
     const infernal = state.soul !== "stygian";
     const hammerSlots = thisWeaponHammers();
     el.innerHTML = `
@@ -1363,37 +1667,6 @@
         <p class="sys-note">${infernal
           ? "血石會掉落。可拿引電血統、全副武裝、自動收回、拔箭留瘡。"
           : "血石自動回補。可拿自動填彈與當頭一棒。引電血統、全副武裝、自動收回與拔箭留瘡無法使用。"}</p>
-      </section>
-      <section class="sys-block">
-        <h3>信物</h3>
-        <p class="sys-label">神祇</p>
-        <div class="keep-pills">
-          <button type="button" class="sys-chip ${!state.keepsake ? "is-on" : ""}" data-keepsake="">未佩戴</button>
-          ${KEEPSAKES.filter((k) => k.type === "god").map((k) => {
-            const g = GODS[k.god];
-            return `<button type="button" class="sys-chip ${state.keepsake === k.id ? "is-on" : ""}" data-keepsake="${k.id}" ${g ? `style="--g:${g.color}"` : ""}>${k.nameZh}</button>`;
-          }).join("")}
-        </div>
-        <p class="sys-label">生存／其他</p>
-        <div class="keep-pills">
-          ${KEEPSAKES.filter((k) => k.type !== "god").map((k) =>
-            `<button type="button" class="sys-chip ${state.keepsake === k.id ? "is-on" : ""}" data-keepsake="${k.id}">${k.nameZh}</button>`
-          ).join("")}
-        </div>
-        <p class="sys-note">${keep ? `${keep.nameZh}：${keep.effectZh}` : "點神祇信物，下一個祝福房間會出現該神。每區打完後、進首領前換成常綠橡子。"}</p>
-        <ol class="keepsake-route">
-          ${keepsakeRoute().map((row) => {
-            const during = KEEPSAKE_MAP[row.duringId];
-            const boss = KEEPSAKE_MAP[row.bossId];
-            return `<li class="route-item">
-              <strong>${row.region.nameZh}</strong>
-              <div class="route-picks">
-                <button type="button" class="sys-chip ${state.keepsake === row.duringId ? "is-on" : ""}" data-keepsake="${row.duringId || ""}">${during ? during.nameZh : "—"}<small>${row.duringWhy}</small></button>
-                <button type="button" class="sys-chip ${state.keepsake === row.bossId ? "is-on" : ""}" data-keepsake="${row.bossId || ""}">${boss ? boss.nameZh : "—"}<small>${row.bossWhy}</small></button>
-              </div>
-            </li>`;
-          }).join("")}
-        </ol>
       </section>
       <section class="sys-block hammer-block">
         <h3>狄德勒斯之錘</h3>
@@ -1415,6 +1688,7 @@
     $("#planner-empty").hidden = !empty;
     $("#planner").hidden = empty;
     if (empty) {
+      renderKeepRail();
       applyRunChrome();
       return;
     }
@@ -1447,6 +1721,7 @@
 
     renderCoreSlots();
     renderRunSystems();
+    renderKeepRail();
     renderPriorityList();
 
     const keep = keepsakeOf();
@@ -2083,6 +2358,7 @@
     const schoolBtn = e.target.closest("[data-school]");
     if (schoolBtn) {
       state.schoolId = schoolBtn.dataset.school;
+      wearKeepHere();
       persist();
       renderPlanner();
       return;
@@ -2136,22 +2412,46 @@
       return;
     }
 
-    const keepBtn = e.target.closest("[data-keepsake]");
-    if (keepBtn) {
-      state.keepsake = keepBtn.dataset.keepsake || "";
-      persist();
-      renderRunSystems();
-      renderPriorityList();
-      renderDuoRail();
-      const keep = keepsakeOf();
-      $$("#god-filters [data-god]").forEach((el) => {
-        const on = keep?.god && el.dataset.god === keep.god;
-        el.classList.toggle("is-keep", on);
-        if (el.dataset.god !== "all" && el.dataset.god !== "hammer") {
-          const name = GODS[el.dataset.god]?.nameZh || "";
-          el.textContent = on ? `${name} · 信物` : name;
+    const keepHereBtn = e.target.closest("[data-keep-here]");
+    if (keepHereBtn) {
+      const regionId = validKeepHere(keepHereBtn.dataset.keepHere);
+      if (!regionId) return;
+      state.keepHere = regionId;
+      state.keepFocus = null;
+      wearKeepHere();
+      applyKeepChange();
+      return;
+    }
+
+    const keepSlotBtn = e.target.closest("[data-keep-slot]");
+    if (keepSlotBtn) {
+      const regionId = keepSlotBtn.dataset.keepRegion;
+      const same = state.keepFocus === regionId;
+      const filled = keepSlotId(regionId);
+      const rec = keepRecId(regionId);
+      if (same) {
+        state.keepFocus = null;
+      } else {
+        state.keepFocus = regionId;
+        if (filled) state.keepsake = filled;
+        else if (rec) {
+          state.keepSlots[regionId] = rec;
+          state.keepsake = rec;
         }
-      });
+      }
+      applyKeepChange();
+      return;
+    }
+
+    const keepPick = e.target.closest("[data-keep-pick]");
+    if (keepPick) {
+      const id = keepPick.dataset.keepPick || "";
+      if (state.keepFocus) {
+        state.keepSlots[state.keepFocus] = id;
+        state.keepFocus = null;
+      }
+      state.keepsake = id;
+      applyKeepChange();
       return;
     }
 
@@ -2217,6 +2517,9 @@
       state.selected.clear();
       state.obtainedDuos.clear();
       state.keepsake = "";
+      state.keepSlots = emptyKeepSlots();
+      state.keepFocus = null;
+      state.keepHere = "";
       state.hammers = new Set(
         [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon !== state.weaponId)
       );
@@ -2235,6 +2538,7 @@
 
   window.addEventListener("hashchange", () => {
     if (!applyHash()) return;
+    wearKeepHere();
     hydrating = true;
     persist();
     showView(state.view, { skipHash: true, keepScroll: true });
@@ -2242,11 +2546,17 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeShareMenu();
+    if (e.key !== "Escape") return;
+    closeShareMenu();
+    if (state.keepFocus) {
+      state.keepFocus = null;
+      renderKeepRail();
+    }
   });
 
   hydrating = true;
   const fromUrl = applyHash();
+  wearKeepHere();
   renderArmory();
   renderDuoCatalog();
   if (fromUrl) {

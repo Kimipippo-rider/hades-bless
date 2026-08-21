@@ -195,7 +195,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
   max-width: 1180px;
   margin: 0 auto;
 }
-.weapon-card, .aspect-card, .boon-card, .duo-card, .loadout-weapon, .run-brief, .core-slots, .run-systems, .picked-support {
+.weapon-card, .aspect-card, .boon-card, .duo-card, .loadout-weapon, .run-brief, .core-slots, .run-systems, .picked-support, .keep-rail {
   background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -347,7 +347,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
   scrollbar-gutter: stable;
 }
 .loadout, .duo-rail, .planner-main { display: grid; gap: 14px; }
-.loadout-weapon, .run-brief, .core-slots, .duo-rail, .run-systems, .picked-support {
+.loadout-weapon, .run-brief, .core-slots, .duo-rail, .run-systems, .picked-support, .keep-rail {
   padding: 16px;
   border-radius: 16px;
 }
@@ -454,6 +454,86 @@ h3 { font-size: 16px; color: var(--gold-2); }
   line-height: 1.55;
 }
 
+.keep-rail {
+  display: grid;
+  gap: 10px;
+}
+.keep-rail[hidden] { display: none; }
+.keep-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.keep-rail-head h3 { margin: 0; }
+.keep-rail-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.keep-rail-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.keep-region {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 4, 4, 0.35);
+}
+.keep-region.is-here {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 28%, transparent);
+}
+.keep-region-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.keep-region strong {
+  font-size: 11px;
+  color: var(--gold);
+}
+.keep-here {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+  flex: 0 0 auto;
+}
+.keep-here.is-on {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.keep-region .sys-chip {
+  width: 100%;
+  border-radius: 10px;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.25;
+}
+.keep-region .sys-chip.is-focus {
+  box-shadow: 0 0 0 1px var(--gold);
+}
+.keep-palette {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.keep-palette .sys-label { margin-top: 2px; }
+
 .planner-toolbar {
   display: flex;
   flex-direction: column;
@@ -515,6 +595,9 @@ h3 { font-size: 16px; color: var(--gold-2); }
   box-shadow: 0 0 0 1px var(--g, var(--gold));
 }
 .sys-chip.is-rec { box-shadow: inset 0 0 0 1px rgba(201, 162, 39, 0.45); }
+.sys-chip.is-set {
+  border-color: color-mix(in srgb, var(--g, var(--gold)) 50%, var(--line));
+}
 .sys-chip.is-blocked {
   opacity: 0.45;
   text-decoration: line-through;
@@ -847,7 +930,6 @@ body.is-run .search,
 body.is-run .loadout-weapon .meta,
 body.is-run .loadout-weapon .warn,
 body.is-run .duo-rail,
-body.is-run .keepsake-route,
 body.is-run .hammer-note,
 body.is-run #embers {
   display: none;
@@ -884,6 +966,12 @@ body.is-run .weapon-emblem.is-sm .weapon-icon {
 }
 body.is-run .run-systems {
   padding: 12px;
+}
+body.is-run .keep-region.is-here {
+  padding: 10px;
+}
+body.is-run .keep-rail:has(.keep-region.is-here) .keep-region:not(.is-here) {
+  opacity: 0.62;
 }
 body.is-run .sys-block h3 { font-size: 11px; }
 body.is-run .core-slots {
@@ -1090,6 +1178,22 @@ body.is-run.show-dock .run-dock {
     font-size: 16px;
   }
   .planner-toolbar { gap: 8px; }
+  .keep-rail { padding: 10px 12px; }
+  .keep-rail-track {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .keep-rail-track::-webkit-scrollbar { display: none; }
+  .keep-region { flex: 0 0 148px; }
+  body.is-run .keep-region.is-here { flex: 0 0 176px; }
+  body.is-run .keep-rail:has(.keep-region.is-here) .keep-region:not(.is-here) {
+    flex: 0 0 122px;
+    opacity: 0.62;
+  }
   .keep-pills, .hammer-pills, .sys-toggle, .run-dock-track {
     overflow-x: auto;
     flex-wrap: nowrap;
