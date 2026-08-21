@@ -14,6 +14,7 @@
     godFilter: "all",
     search: "",
     duoGods: [],
+    legendGod: "",
     expandedDuo: null,
     highlightBoon: null,
     slotFilter: null,
@@ -32,7 +33,10 @@
     keepFocus: null,
     keepHere: "",
     expandedLegend: null,
+    railPanel: localStorage.getItem("hades-rail-panel") === "legends" ? "legends" : "duos",
     runMode: false,
+    poms: {},
+    pomStep: 1,
   };
 
   function viewportLayout() {
@@ -126,6 +130,110 @@
     return new Set(String(raw || "").split(",").filter((id) => id && DUO_MAP[id]));
   }
 
+  const POM_MAX_HITS = 12;
+
+  function boonCanPom(boon) {
+    return Boolean(boon && boon.slot !== "legendary");
+  }
+
+  function parsePomHits(raw) {
+    const fromArr = Array.isArray(raw)
+      ? raw
+      : [...String(raw || "")];
+    return fromArr.map(Number).filter((n) => n === 1 || n === 2).slice(0, POM_MAX_HITS);
+  }
+
+  function parsePoms(raw) {
+    const out = {};
+    if (typeof raw === "string") {
+      String(raw || "").split(",").forEach((part) => {
+        const cut = part.indexOf(":");
+        if (cut < 1) return;
+        const id = part.slice(0, cut);
+        if (!BOON_MAP[id] || !boonCanPom(BOON_MAP[id])) return;
+        const hits = parsePomHits(part.slice(cut + 1));
+        if (hits.length) out[id] = hits;
+      });
+      return out;
+    }
+    if (raw && typeof raw === "object") {
+      Object.keys(raw).forEach((id) => {
+        if (!BOON_MAP[id] || !boonCanPom(BOON_MAP[id])) return;
+        const hits = parsePomHits(raw[id]);
+        if (hits.length) out[id] = hits;
+      });
+    }
+    return out;
+  }
+
+  function prunePoms() {
+    Object.keys(state.poms).forEach((id) => {
+      if (!state.selected.has(id) || !boonCanPom(BOON_MAP[id])) delete state.poms[id];
+    });
+  }
+
+  function serializePoms() {
+    prunePoms();
+    return Object.keys(state.poms).sort().map((id) => `${id}:${state.poms[id].join("")}`).join(",");
+  }
+
+  function pomHits(id) {
+    return state.poms[id] || [];
+  }
+
+  function pomTotal(id) {
+    return pomHits(id).reduce((sum, n) => sum + n, 0);
+  }
+
+  function pomMarkLabel(id) {
+    const n = pomTotal(id);
+    return n ? `石榴+${n}` : "";
+  }
+
+  function clearBoonPoms(id) {
+    delete state.poms[id];
+  }
+
+  function addPom(id, step) {
+    const n = step === 2 ? 2 : 1;
+    const boon = BOON_MAP[id];
+    if (!id || !state.selected.has(id) || !boonCanPom(boon)) return;
+    const hits = pomHits(id);
+    if (hits.length >= POM_MAX_HITS) {
+      toast("這道祝福的石榴已記滿");
+      return;
+    }
+    state.poms[id] = [...hits, n];
+    state.pomStep = n;
+    persist();
+    renderCoreSlots();
+    renderBoonBoard();
+    renderRunSystems();
+  }
+
+  function popPom(id) {
+    if (!state.poms[id]?.length) return;
+    const next = state.poms[id].slice(0, -1);
+    if (next.length) state.poms[id] = next;
+    else delete state.poms[id];
+    persist();
+    renderCoreSlots();
+    renderBoonBoard();
+    renderRunSystems();
+  }
+
+  function pomControlsMarkup(boonId) {
+    if (!state.selected.has(boonId) || !boonCanPom(BOON_MAP[boonId])) return "";
+    const total = pomTotal(boonId);
+    const hits = pomHits(boonId);
+    return `<span class="pom-ctrl" data-pom-boon="${boonId}">
+      ${total ? `<i class="pom-total">石榴+${total}</i>` : ""}
+      <i class="pom-btn ${state.pomStep === 1 ? "is-pref" : ""}" data-pom-add="1" role="button">+1</i>
+      <i class="pom-btn ${state.pomStep === 2 ? "is-pref" : ""}" data-pom-add="2" role="button">+2</i>
+      ${hits.length ? `<i class="pom-btn" data-pom-pop="1" role="button">−</i>` : ""}
+    </span>`;
+  }
+
   function keepSlotId(regionId) {
     return state.keepSlots[regionId] || "";
   }
@@ -174,6 +282,16 @@
     catch { return null; }
   })());
   state.keepHere = validKeepHere(localStorage.getItem("hades-keep-here") || "");
+  state.poms = parsePoms((() => {
+    try { return JSON.parse(localStorage.getItem("hades-poms") || "null"); }
+    catch { return null; }
+  })());
+  prunePoms();
+  state.pomStep = (() => {
+    const saved = localStorage.getItem("hades-pom-step");
+    if (saved === "1" || saved === "2") return Number(saved);
+    return state.obtainedDuos.has("sweet-nectar") ? 2 : 1;
+  })();
   const motionLite = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function prefersLiteMotion() {
@@ -235,12 +353,19 @@
     else localStorage.removeItem("hades-keep-here");
     localStorage.setItem("hades-hammers", JSON.stringify([...state.hammers]));
     localStorage.setItem("hades-obtained-duos", JSON.stringify([...state.obtainedDuos]));
+    prunePoms();
+    localStorage.setItem("hades-poms", JSON.stringify(state.poms));
+    localStorage.setItem("hades-pom-step", state.pomStep === 2 ? "2" : "1");
+    localStorage.setItem("hades-rail-panel", state.railPanel === "legends" ? "legends" : "duos");
     if (!hydrating) writeHash();
   }
 
   function buildHash() {
     if (state.view === "duos") {
       return state.duoGods.length ? `duos/${state.duoGods.join("/")}` : "duos";
+    }
+    if (state.view === "legends") {
+      return state.legendGod ? `legends/${state.legendGod}` : "legends";
     }
     if (state.view === "aspect" && state.weaponId) return `aspect/${state.weaponId}`;
     if (state.view === "planner" && state.weaponId && state.aspectId) {
@@ -250,9 +375,10 @@
       if (state.soul === "stygian") parts.push("soul=stygian");
       if (state.keepsake && KEEPSAKE_MAP[state.keepsake]) parts.push(`k=${state.keepsake}`);
       if (state.companion && COMPANION_MAP[state.companion]) parts.push(`c=${state.companion}`);
-      if (keepSlotsFilled()) parts.push(`kr=${serializeKeepSlots()}`);
+      parts.push(`kr=${serializeKeepSlots()}`);
       if (state.keepHere) parts.push(`here=${state.keepHere}`);
       parts.push(`d=${serializeObtainedDuos()}`);
+      parts.push(`p=${serializePoms()}`);
       const hammers = thisWeaponHammers().join(",");
       if (hammers) parts.push(`h=${hammers}`);
       if (state.schoolId && state.schoolId !== "standard") parts.push(`school=${state.schoolId}`);
@@ -288,6 +414,12 @@
       state.duoGods = segs.slice(1).filter((id) => GODS[id] && !GODS[id].noDuo).slice(0, 2);
       return true;
     }
+    if (view === "legends") {
+      state.view = "legends";
+      const godId = segs[1] || "";
+      state.legendGod = legendCatalogGodOk(godId) ? godId : "";
+      return true;
+    }
     if (view === "aspect") {
       const weapon = WEAPON_MAP[segs[1]];
       if (!weapon) return false;
@@ -313,10 +445,12 @@
         state.keepsake = KEEPSAKE_MAP[keepId] ? keepId : "";
         const companionId = params.get("c") || "";
         state.companion = COMPANION_MAP[companionId] ? companionId : "";
-        state.keepSlots = params.has("kr") ? parseKeepSlots(params.get("kr") || "") : emptyKeepSlots();
-        state.keepHere = validKeepHere(params.get("here") || "");
+        if (params.has("kr")) state.keepSlots = parseKeepSlots(params.get("kr") || "");
+        if (params.has("here")) state.keepHere = validKeepHere(params.get("here") || "");
         if (state.keepHere) wearKeepHere();
         if (params.has("d")) state.obtainedDuos = parseObtainedDuos(params.get("d"));
+        if (params.has("p")) state.poms = parsePoms(params.get("p") || "");
+        prunePoms();
         const otherHammers = [...state.hammers].filter((id) => HAMMER_MAP[id]?.weapon !== weapon.id);
         const incoming = params.has("h")
           ? params.get("h").split(",").filter((id) => HAMMER_MAP[id]?.weapon === weapon.id).slice(0, 2)
@@ -423,9 +557,10 @@
       const boon = selectedInSlot(slot);
       const shown = boon ? displayBoonName(boon) : null;
       const god = boon ? GODS[boon.god] : null;
+      const pom = boon ? pomMarkLabel(boon.id) : "";
       return {
         label: SLOT_LABELS[slot],
-        nameZh: shown?.nameZh || "—",
+        nameZh: shown?.nameZh ? `${shown.nameZh}${pom ? ` · ${pom}` : ""}` : "—",
         godZh: god?.nameZh || "",
         color: god?.color || "",
         filled: Boolean(boon),
@@ -433,8 +568,9 @@
     });
     const support = selectedSupportBoons().map((b) => {
       const god = GODS[b.god];
+      const pom = pomMarkLabel(b.id);
       return {
-        nameZh: displayBoonName(b).nameZh,
+        nameZh: `${displayBoonName(b).nameZh}${pom ? ` · ${pom}` : ""}`,
         godZh: god?.nameZh || "",
         color: god?.color || "",
         legendary: b.slot === "legendary",
@@ -835,7 +971,39 @@
     const dock = $("#run-dock");
     if (dock) dock.hidden = !(state.runMode && onPlanner);
     if (!state.runMode) closeDuoSheet();
+    applyRailPanel();
     syncEmbers();
+  }
+
+  function railPanelOf(raw) {
+    return raw === "legends" ? "legends" : "duos";
+  }
+
+  function applyRailPanel() {
+    const panel = railPanelOf(state.railPanel);
+    state.railPanel = panel;
+    const rail = $("#duo-rail");
+    if (rail) rail.dataset.panel = panel;
+    $$("[data-rail-panel]").forEach((btn) => {
+      const on = btn.dataset.railPanel === panel;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const title = $("#rail-title");
+    if (title) title.textContent = panel === "legends" ? "傳奇祝福" : "雙重祝福追蹤";
+  }
+
+  function setRailPanel(next) {
+    const panel = railPanelOf(next);
+    const changed = panel !== state.railPanel;
+    state.railPanel = panel;
+    localStorage.setItem("hades-rail-panel", panel);
+    if (changed) {
+      if (panel === "duos") state.expandedLegend = null;
+      else state.expandedDuo = null;
+    }
+    applyRailPanel();
+    if (changed && state.view === "planner") renderDuoRail();
   }
 
   function closeDuoSheet() {
@@ -850,6 +1018,7 @@
     $$(".tab").forEach((el) => el.classList.toggle("is-active", el.dataset.view === (view === "aspect" ? "armory" : view)));
     if (view === "planner") renderPlanner();
     if (view === "duos") renderDuoCatalog();
+    if (view === "legends") renderLegendCatalog();
     if (view === "aspect") renderAspects();
     applyRunChrome();
     if (!opts.skipHash && !hydrating) writeHash();
@@ -1013,7 +1182,8 @@
     const shown = displayBoonName(boon);
     const g = GODS[boon.god];
     const star = boon.slot === "legendary" ? " ★" : "";
-    return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-jump-boon="${boon.id}" ${g ? `style="--g:${g.color}"` : ""}>${shown.nameZh}${star}</button>`;
+    const pom = on ? pomMarkLabel(boon.id) : "";
+    return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-jump-boon="${boon.id}" ${g ? `style="--g:${g.color}"` : ""}>${shown.nameZh}${star}${pom ? ` · ${pom}` : ""}</button>`;
   }
 
   function keepsakeRoute(source = schoolOf()) {
@@ -1100,6 +1270,7 @@
       const boon = boonOf(id);
       if (boon && isBoonDisabled(boon)) {
         state.selected.delete(id);
+        clearBoonPoms(id);
         removed.push(displayBoonName(boon).nameZh);
       }
     }
@@ -1491,7 +1662,10 @@
       const current = selectedInSlot(slot);
       const shown = current ? displayBoonName(current) : rec ? displayBoonName(rec) : null;
       const god = current ? GODS[current.god] : rec ? GODS[rec.god] : null;
-      const label = current ? shown.nameZh : rec ? (state.runMode ? shown.nameZh : `建議：${shown.nameZh}`) : "未鎖定";
+      const pomNote = current ? pomMarkLabel(current.id) : "";
+      const label = current
+        ? `${shown.nameZh}${pomNote ? ` · ${pomNote}` : ""}`
+        : rec ? (state.runMode ? shown.nameZh : `建議：${shown.nameZh}`) : "未鎖定";
       const on = state.slotFilter === slot;
       const filled = Boolean(current);
       const combat = combatStatus(slot);
@@ -1692,6 +1866,16 @@
           : `<p class="sys-note hammer-note">點上方篩選「狄德勒斯之錘」，勾選本輪拿到的改造。最多兩把。</p>`}
       </section>
       <section class="sys-block">
+        <h3>力量石榴</h3>
+        <div class="sys-toggle" role="group" aria-label="下一顆石榴">
+          <button type="button" class="sys-chip ${state.pomStep === 1 ? "is-on" : ""}" data-pom-step="1">+1</button>
+          <button type="button" class="sys-chip ${state.pomStep === 2 ? "is-on" : ""}" data-pom-step="2">+2</button>
+        </div>
+        <p class="sys-note">${state.obtainedDuos.has("sweet-nectar")
+          ? "已拿到甘甜蜜露，之後石榴通常 +2。點已勾選祝福上的 +1／+2 記下來。"
+          : "一般石榴 +1；甘甜蜜露或歐律狄刻石榴粥為 +2。點已勾選祝福上的 +1／+2 記下來。"}</p>
+      </section>
+      <section class="sys-block">
         <h3>伴偶</h3>
         <div class="keep-pills" role="group" aria-label="伴偶">
           <button type="button" class="sys-chip ${!state.companion ? "is-on" : ""}" data-companion="">未攜帶</button>
@@ -1864,7 +2048,7 @@
             const tags = [
               rec ? ["core", "核心"] : null,
               needed ? ["duo", "雙重"] : null,
-              pom ? ["pom", "石榴"] : null,
+              pom ? ["pom", "建議石榴"] : null,
             ].filter(Boolean);
             return `<button class="boon-card ${on ? "is-on" : ""} ${disabled ? "is-disabled" : ""} ${rec ? "is-rec" : ""} ${needed ? "is-needed" : ""} ${pom ? "is-pom" : ""} ${focus ? "is-focus" : ""}" data-boon="${b.id}" id="boon-${b.id}" style="--g:${g.color}" ${disabled ? "disabled" : ""}>
               <span class="boon-slot">${slotZh[b.slot]}${b.slot === "legendary" ? " ★" : ""}</span>
@@ -1872,6 +2056,7 @@
               <strong>${shown.nameZh}</strong>
               <span class="boon-en">${shown.name}</span>
               <p>${b.effectZh}</p>
+              ${pomControlsMarkup(b.id)}
             </button>`;
           }).join("")}
         </div>
@@ -1901,7 +2086,7 @@
       { title: "已拿到", items: ranked.filter((x) => x.obtained) },
       { title: "還差 1 道", items: ranked.filter((x) => !x.met && !x.blocked && !x.obtained && x.progress === x.total - 1) },
       { title: "進行中", items: ranked.filter((x) => !x.met && !x.blocked && !x.obtained && x.progress > 0 && x.progress < x.total - 1) },
-      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && !x.obtained && x.progress === 0) },
+      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && !x.obtained && x.progress === 0 && x.progress !== x.total - 1) },
       { title: "無法使用", items: ranked.filter((x) => x.blocked && !x.obtained) },
     ];
     return { suggested, ranked, groups };
@@ -1981,7 +2166,7 @@
       { title: "已勾選", items: ranked.filter((x) => x.selected && !x.blocked) },
       { title: "還差 1 道", items: ranked.filter((x) => !x.met && !x.blocked && x.progress === x.total - 1) },
       { title: "進行中", items: ranked.filter((x) => !x.met && !x.blocked && x.progress > 0 && x.progress < x.total - 1) },
-      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && x.progress === 0) },
+      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && x.progress === 0 && x.progress !== x.total - 1) },
       { title: "無法使用", items: ranked.filter((x) => x.blocked) },
     ];
   }
@@ -2043,14 +2228,12 @@
     const legendClose = legendGroups[2].items;
     const legendPills = [...legendReady, ...legendClose].map((row) => {
       const { boon, met, missingLabels } = row;
-      const closeOne = !met;
       return `<button type="button" class="run-pill ${met ? "is-ready" : "is-close"} ${state.expandedLegend === boon.id ? "is-open" : ""}" data-legend="${boon.id}" data-run-legend="1">
         <strong>${boon.nameZh}</strong>
         <small>${met ? "傳奇可領取" : `還差 ${missingLabels.join("、")}`}</small>
       </button>`;
     });
     const pills = [...ready, ...close, ...progress, ...suggestedLocked];
-    summary.textContent = `可領取 ${ready.length}　·　還差 1 道 ${close.length}${legendReady.length || legendClose.length ? `　·　傳奇 ${legendReady.length} 可領／${legendClose.length} 接近` : ""}`;
     const duoPills = pills.map((row) => {
         const { duo, blocked, met, obtained, exclusiveReady, progress, total, missingLabels } = row;
         const closeOne = !met && !blocked && !obtained && progress === total - 1;
@@ -2067,9 +2250,17 @@
           <small>${sub}</small>
         </button>`;
       });
-    track.innerHTML = duoPills.length || legendPills.length
-      ? [...duoPills, ...legendPills].join("")
-      : `<p class="meta">勾選祝福後，即將完成的雙重與傳奇會出現在這裡。</p>`;
+    if (state.railPanel === "legends") {
+      summary.textContent = `傳奇 ${legendReady.length} 可領／${legendClose.length} 接近`;
+      track.innerHTML = legendPills.length
+        ? legendPills.join("")
+        : `<p class="meta">勾選祝福後，即將完成的傳奇會出現在這裡。</p>`;
+      return;
+    }
+    summary.textContent = `可領取 ${ready.length}　·　還差 1 道 ${close.length}`;
+    track.innerHTML = duoPills.length
+      ? duoPills.join("")
+      : `<p class="meta">勾選祝福後，即將完成的雙重會出現在這裡。</p>`;
   }
 
   function renderDuoSheet() {
@@ -2213,6 +2404,37 @@
     }).join("");
   }
 
+  function legendCatalogGods() {
+    return Object.values(GODS).filter((g) => g.id !== "chaos");
+  }
+
+  function legendCatalogGodOk(id) {
+    return Boolean(id && GODS[id] && id !== "chaos" && LEGENDARIES.some((b) => b.god === id));
+  }
+
+  function renderLegendCatalog() {
+    const row = $("#legend-god-row");
+    const catalog = $("#legend-catalog");
+    if (!row || !catalog) return;
+    row.innerHTML = legendCatalogGods().map((g) => `
+      <button class="duo-god ${state.legendGod === g.id ? "is-active" : ""}" data-legend-god="${g.id}" style="--g:${g.color}">${g.nameZh}</button>
+    `).join("");
+
+    const list = LEGENDARIES.filter((b) => !state.legendGod || b.god === state.legendGod);
+    catalog.innerHTML = list.map((boon) => {
+      const god = GODS[boon.god];
+      return `<article class="duo-card" style="--g1:${god.color};--g2:${god.color}">
+        <div class="duo-names">
+          <strong>${boon.nameZh}</strong>
+          <small>${boon.name}</small>
+        </div>
+        <p class="meta" style="margin:8px 0">${god.nameZh} · 傳奇</p>
+        <p class="duo-req">${boon.effectZh}</p>
+        <div style="margin-top:10px">${legendGapsMarkup(boon)}</div>
+      </article>`;
+    }).join("");
+  }
+
   function toggleObtainedDuo(id) {
     const duo = duoOf(id);
     if (!duo) return;
@@ -2221,9 +2443,12 @@
     } else {
       state.obtainedDuos.add(id);
       (duo.exclusiveWith || []).forEach((other) => state.obtainedDuos.delete(other));
+      if (id === "sweet-nectar") state.pomStep = 2;
     }
     persist();
     renderDuoRail();
+    renderRunSystems();
+    renderBoonBoard();
   }
 
   function toggleBoon(id) {
@@ -2231,10 +2456,14 @@
     if (!boon || isBoonDisabled(boon)) return;
     if (state.selected.has(id)) {
       state.selected.delete(id);
+      clearBoonPoms(id);
     } else {
       if (SLOT_KEYS.includes(boon.slot)) {
         for (const other of [...state.selected]) {
-          if (other !== id && BOON_MAP[other]?.slot === boon.slot) state.selected.delete(other);
+          if (other !== id && BOON_MAP[other]?.slot === boon.slot) {
+            state.selected.delete(other);
+            clearBoonPoms(other);
+          }
         }
       }
       state.selected.add(id);
@@ -2348,6 +2577,12 @@
       return;
     }
 
+    const railTab = e.target.closest("[data-rail-panel]");
+    if (railTab) {
+      setRailPanel(railTab.dataset.railPanel);
+      return;
+    }
+
     if (e.target.closest("[data-close-sheet]")) {
       state.expandedDuo = null;
       state.expandedLegend = null;
@@ -2435,6 +2670,33 @@
       renderBoonBoard();
       renderDuoRail();
       if (removed.length) toast(`已取消不相容祝福：${removed.join("、")}`);
+      return;
+    }
+
+    const pomAdd = e.target.closest("[data-pom-add]");
+    if (pomAdd) {
+      e.preventDefault();
+      const id = pomAdd.closest("[data-pom-boon], [data-boon]")?.dataset.pomBoon
+        || pomAdd.closest("[data-boon]")?.dataset.boon;
+      addPom(id, Number(pomAdd.dataset.pomAdd));
+      return;
+    }
+
+    const pomPop = e.target.closest("[data-pom-pop]");
+    if (pomPop) {
+      e.preventDefault();
+      const id = pomPop.closest("[data-pom-boon], [data-boon]")?.dataset.pomBoon
+        || pomPop.closest("[data-boon]")?.dataset.boon;
+      popPom(id);
+      return;
+    }
+
+    const pomStepBtn = e.target.closest("[data-pom-step]");
+    if (pomStepBtn) {
+      state.pomStep = pomStepBtn.dataset.pomStep === "2" ? 2 : 1;
+      persist();
+      renderRunSystems();
+      renderBoonBoard();
       return;
     }
 
@@ -2548,9 +2810,20 @@
       return;
     }
 
+    const legendGod = e.target.closest("[data-legend-god]");
+    if (legendGod) {
+      const id = legendGod.dataset.legendGod;
+      state.legendGod = state.legendGod === id ? "" : (legendCatalogGodOk(id) ? id : "");
+      renderLegendCatalog();
+      writeHash();
+      return;
+    }
+
     if (e.target.closest("#reset-run")) {
       state.selected.clear();
       state.obtainedDuos.clear();
+      state.poms = {};
+      state.pomStep = 1;
       state.keepsake = "";
       state.companion = "";
       state.keepSlots = emptyKeepSlots();
@@ -2595,6 +2868,7 @@
   wearKeepHere();
   renderArmory();
   renderDuoCatalog();
+  renderLegendCatalog();
   if (fromUrl) {
     persist();
     showView(state.view, { skipHash: true, keepScroll: true });

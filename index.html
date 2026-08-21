@@ -13,7 +13,7 @@
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@700&display=swap" />
   </noscript>
-  <link rel="stylesheet" href="css/styles.css?v=13" />
+  <link rel="stylesheet" href="css/styles.css?v=16" />
 </head>
 <body>
   <script>
@@ -44,6 +44,7 @@
       <button class="tab is-active" data-view="armory" type="button">軍械庫</button>
       <button class="tab" data-view="planner" type="button">祝福規劃</button>
       <button class="tab" data-view="duos" type="button">雙重祝福</button>
+      <button class="tab" data-view="legends" type="button">傳奇祝福</button>
       <button class="tab run-toggle" id="run-toggle" type="button">本輪模式</button>
       <button class="ghost share-btn" id="share-build" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="share-menu">分享配裝</button>
     </nav>
@@ -98,7 +99,7 @@
           <p class="run-hint" id="run-hint" hidden>點上方欄位，快速勾選本輪祝福。</p>
           <div class="boon-board" id="boon-board"></div>
         </div>
-        <aside class="duo-rail">
+        <aside class="duo-rail" id="duo-rail" data-panel="duos">
           <div class="run-brief">
             <div class="run-brief-head">
               <h3>開局走向</h3>
@@ -106,21 +107,25 @@
             </div>
             <p id="priority-list"></p>
           </div>
-          <div class="duo-rail-head">
-            <h3>雙重祝福追蹤</h3>
-            <p id="duo-summary">點選卡片查看還缺什麼，再跳到對應祝福</p>
+          <div class="keep-pills rail-tabs" role="tablist" aria-label="右側追蹤">
+            <button type="button" class="sys-chip is-on" data-rail-panel="duos" role="tab" aria-selected="true">雙重祝福</button>
+            <button type="button" class="sys-chip" data-rail-panel="legends" role="tab" aria-selected="false">傳奇祝福</button>
           </div>
-          <div class="duo-list" id="duo-list"></div>
-          <div class="legend-rail-head">
-            <h3>傳奇祝福</h3>
+          <div class="duo-rail-head">
+            <h3 id="rail-title">雙重祝福追蹤</h3>
+            <p id="duo-summary">點選卡片查看還缺什麼，再跳到對應祝福</p>
             <p id="legend-summary">依目前勾選計算前置</p>
           </div>
+          <div class="duo-list" id="duo-list"></div>
           <div class="legend-list" id="legend-list"></div>
         </aside>
       </div>
       <aside class="run-dock" id="run-dock" hidden>
         <div class="run-dock-head">
-          <strong>雙重進度</strong>
+          <div class="keep-pills rail-tabs" role="tablist" aria-label="本輪追蹤">
+            <button type="button" class="sys-chip is-on" data-rail-panel="duos" role="tab" aria-selected="true">雙重祝福</button>
+            <button type="button" class="sys-chip" data-rail-panel="legends" role="tab" aria-selected="false">傳奇祝福</button>
+          </div>
           <span id="run-dock-summary"></span>
         </div>
         <div class="run-dock-track" id="run-dock-track"></div>
@@ -135,6 +140,16 @@
       </div>
       <div class="duo-god-row" id="duo-god-row"></div>
       <div class="duo-catalog" id="duo-catalog"></div>
+    </section>
+
+    <section id="view-legends" class="view" data-view="legends">
+      <div class="hero compact">
+        <p class="eyebrow">11 Legendary Boons</p>
+        <h1>奧林帕斯傳奇祝福</h1>
+        <p class="lede">八位奧林帕斯神與赫爾墨斯各有傳奇。卡俄斯沒有傳奇。點選神祇篩選，前置可跳到規劃頁勾選。</p>
+      </div>
+      <div class="duo-god-row" id="legend-god-row"></div>
+      <div class="duo-catalog" id="legend-catalog"></div>
     </section>
   </main>
 
@@ -159,7 +174,7 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=6"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="js/data.js?v=8"></script>
+  <script src="js/app.js?v=22"></script>
 </body>
 </html>
