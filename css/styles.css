@@ -924,7 +924,6 @@ h3 { font-size: 16px; color: var(--gold-2); }
   box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.45);
 }
 
-body.is-run #share-build-loadout,
 body.is-run .colophon,
 body.is-run .search,
 body.is-run .loadout-weapon .meta,
@@ -1224,7 +1223,6 @@ body.is-run.show-dock .run-dock {
   body:not(.is-run) .planner-main { order: 3; }
   body:not(.is-run) .duo-rail { order: 4; }
   body:not(.is-run) .run-systems { order: 5; }
-  body:not(.is-run) #share-build-loadout { order: 6; }
   body:not(.is-run) .duo-rail {
     position: static;
     max-height: none;

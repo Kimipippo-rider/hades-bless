@@ -1564,6 +1564,15 @@ const KEEPSAKES = [
   { id: "harpy-feather-duster", name: "Harpy Feather Duster", nameZh: "哈耳庇厄毛撣", type: "utility", effectZh: "打破罐子有機率掉落回復。" },
 ];
 
+const COMPANIONS = [
+  { id: "battie", name: "Battie", nameZh: "巴蒂", fromZh: "梅蓋拉", effectZh: "召喚蝙蝠造成範圍傷害。" },
+  { id: "mort", name: "Mort", nameZh: "莫特", fromZh: "阿喀琉斯", effectZh: "飛向敵人造成傷害。" },
+  { id: "rib", name: "Rib", nameZh: "肋骨", fromZh: "斯凱利", effectZh: "嘲諷並吸引敵人。" },
+  { id: "shady", name: "Shady", nameZh: "謝迪", fromZh: "西西弗斯", effectZh: "造成傷害並掉落錢幣。" },
+  { id: "fidi", name: "Fidi", nameZh: "菲蒂", fromZh: "杜莎", effectZh: "治療並攻擊敵人。" },
+  { id: "antos", name: "Antos", nameZh: "安托斯", fromZh: "塔納托斯", effectZh: "對生命較低的敵人造成高傷害。" },
+];
+
 const HAMMERS = [
   { id: "stygius-double-edge", weapon: "stygius", name: "Double Edge", nameZh: "雙刃擊劍", effectZh: "衝刺攻擊打兩下，並提高 20% 傷害。", rec: ["zagreus", "nemesis"] },
   { id: "stygius-flurry-slash", weapon: "stygius", name: "Flurry Slash", nameZh: "急速砍殺", effectZh: "長按攻擊可連續揮斬，每下 25 傷害。", rec: ["zagreus", "nemesis"], exclusiveWith: ["stygius-world-splitter", "stygius-cruel-thrust"], moves: { attack: { nameZh: "急速砍殺", damage: "25" } } },

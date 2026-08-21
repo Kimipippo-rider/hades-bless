@@ -19,6 +19,7 @@
     slotFilter: null,
     soul: localStorage.getItem("hades-soul") === "stygian" ? "stygian" : "infernal",
     keepsake: localStorage.getItem("hades-keepsake") || "",
+    companion: localStorage.getItem("hades-companion") || "",
     hammers: new Set((() => {
       try { return JSON.parse(localStorage.getItem("hades-hammers") || "[]"); }
       catch { return []; }
@@ -76,6 +77,7 @@
   const DUO_MAP = Object.fromEntries(DUOS.map((d) => [d.id, d]));
   const KEEPSAKE_MAP = Object.fromEntries(KEEPSAKES.map((k) => [k.id, k]));
   const HAMMER_MAP = Object.fromEntries(HAMMERS.map((h) => [h.id, h]));
+  const COMPANION_MAP = Object.fromEntries(COMPANIONS.map((c) => [c.id, c]));
   const LEGENDARIES = BOONS.filter((b) => b.slot === "legendary");
   const SLOT_KEYS = ["attack", "special", "cast", "dash", "call"];
   const SLOT_LABELS = { attack: "攻擊", special: "特殊", cast: "投彈", dash: "衝刺", call: "求援" };
@@ -226,6 +228,8 @@
     localStorage.setItem("hades-soul", state.soul);
     if (state.keepsake) localStorage.setItem("hades-keepsake", state.keepsake);
     else localStorage.removeItem("hades-keepsake");
+    if (state.companion) localStorage.setItem("hades-companion", state.companion);
+    else localStorage.removeItem("hades-companion");
     localStorage.setItem("hades-keep-slots", JSON.stringify(state.keepSlots = parseKeepSlots(state.keepSlots)));
     if (state.keepHere) localStorage.setItem("hades-keep-here", state.keepHere);
     else localStorage.removeItem("hades-keep-here");
@@ -245,6 +249,7 @@
       parts.push(`b=${boons}`);
       if (state.soul === "stygian") parts.push("soul=stygian");
       if (state.keepsake && KEEPSAKE_MAP[state.keepsake]) parts.push(`k=${state.keepsake}`);
+      if (state.companion && COMPANION_MAP[state.companion]) parts.push(`c=${state.companion}`);
       if (keepSlotsFilled()) parts.push(`kr=${serializeKeepSlots()}`);
       if (state.keepHere) parts.push(`here=${state.keepHere}`);
       parts.push(`d=${serializeObtainedDuos()}`);
@@ -306,6 +311,8 @@
         state.soul = params.get("soul") === "stygian" ? "stygian" : "infernal";
         const keepId = params.get("k") || "";
         state.keepsake = KEEPSAKE_MAP[keepId] ? keepId : "";
+        const companionId = params.get("c") || "";
+        state.companion = COMPANION_MAP[companionId] ? companionId : "";
         state.keepSlots = params.has("kr") ? parseKeepSlots(params.get("kr") || "") : emptyKeepSlots();
         state.keepHere = validKeepHere(params.get("here") || "");
         if (state.keepHere) wearKeepHere();
@@ -450,6 +457,7 @@
       soulZh: state.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂",
       slots,
       keepsake: keep ? keep.nameZh : "",
+      companion: companionOf()?.nameZh || "",
       hereZh: here?.nameZh || "",
       keepRoute: REGIONS.map((r) => ({
         label: r.nameZh,
@@ -644,7 +652,8 @@
     let chipX = pad;
     if (card.schoolZh) chipX += drawShareChip(ctx, chipX, y, card.schoolZh, card.accent) + 8;
     chipX += drawShareChip(ctx, chipX, y, card.soulZh, "#c9a227") + 8;
-    if (card.keepsake) drawShareChip(ctx, chipX, y, `佩戴 ${card.keepsake}`, "#c9a227");
+    if (card.keepsake) chipX += drawShareChip(ctx, chipX, y, `佩戴 ${card.keepsake}`, "#c9a227") + 8;
+    if (card.companion) drawShareChip(ctx, chipX, y, `伴偶 ${card.companion}`, "#c9a227");
     y += 50;
 
     const rule = () => {
@@ -896,6 +905,10 @@
 
   function keepsakeOf() {
     return KEEPSAKE_MAP[state.keepsake] || null;
+  }
+
+  function companionOf() {
+    return COMPANION_MAP[state.companion] || null;
   }
 
   function godKeepsake(godId) {
@@ -1678,6 +1691,19 @@
             <p class="sys-note hammer-note">${hammerSlots.map((id) => HAMMER_MAP[id].effectZh).join(" ")}</p>`
           : `<p class="sys-note hammer-note">點上方篩選「狄德勒斯之錘」，勾選本輪拿到的改造。最多兩把。</p>`}
       </section>
+      <section class="sys-block">
+        <h3>伴偶</h3>
+        <div class="keep-pills" role="group" aria-label="伴偶">
+          <button type="button" class="sys-chip ${!state.companion ? "is-on" : ""}" data-companion="">未攜帶</button>
+          ${COMPANIONS.map((c) =>
+            `<button type="button" class="sys-chip ${state.companion === c.id ? "is-on" : ""}" data-companion="${c.id}">${c.nameZh}</button>`
+          ).join("")}
+        </div>
+        <p class="sys-note">${(() => {
+          const c = companionOf();
+          return c ? `${c.nameZh}（${c.fromZh}）：${c.effectZh}` : "本輪只能帶一隻。點選伴偶記錄你帶進冥府的那一隻。";
+        })()}</p>
+      </section>
     `;
   }
 
@@ -2299,7 +2325,7 @@
       else if (kind === "png") exportSharePng();
       return;
     }
-    const shareTrigger = e.target.closest("#share-build, #share-build-loadout");
+    const shareTrigger = e.target.closest("#share-build");
     if (shareTrigger) {
       if (shareMenuAnchor === shareTrigger) closeShareMenu();
       else openShareMenu(shareTrigger);
@@ -2412,6 +2438,15 @@
       return;
     }
 
+    const companionBtn = e.target.closest("[data-companion]");
+    if (companionBtn) {
+      const id = companionBtn.dataset.companion || "";
+      state.companion = COMPANION_MAP[id] ? id : "";
+      persist();
+      renderRunSystems();
+      return;
+    }
+
     const keepHereBtn = e.target.closest("[data-keep-here]");
     if (keepHereBtn) {
       const regionId = validKeepHere(keepHereBtn.dataset.keepHere);
@@ -2517,6 +2552,7 @@
       state.selected.clear();
       state.obtainedDuos.clear();
       state.keepsake = "";
+      state.companion = "";
       state.keepSlots = emptyKeepSlots();
       state.keepFocus = null;
       state.keepHere = "";
