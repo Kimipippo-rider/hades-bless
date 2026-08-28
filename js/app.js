@@ -2148,6 +2148,11 @@
     return `<button type="button" class="ghost obtain-btn" data-obtain-duo="${duo.id}">${obtained ? "取消已拿到" : "標記已拿到"}</button>`;
   }
 
+  function obtainLegendMarkup(boon, selected) {
+    if (isBoonDisabled(boon)) return "";
+    return `<button type="button" class="ghost obtain-btn" data-obtain-legend="${boon.id}">${selected ? "取消已拿到" : "標記已拿到"}</button>`;
+  }
+
   function duoStatusSummary(row) {
     const { blocked, blockReason, met, obtained, exclusiveReady, missingLabels, progress, total } = row;
     const closeOne = !met && !blocked && !obtained && progress === total - 1;
@@ -2209,11 +2214,11 @@
     const ranked = LEGENDARIES.map((boon) => ({ boon, ...legendaryGaps(boon) }));
     return [
       { title: "可領取", items: ranked.filter((x) => x.met && !x.blocked && !x.selected) },
-      { title: "已勾選", items: ranked.filter((x) => x.selected && !x.blocked) },
-      { title: "還差 1 道", items: ranked.filter((x) => !x.met && !x.blocked && x.progress === x.total - 1) },
-      { title: "進行中", items: ranked.filter((x) => !x.met && !x.blocked && x.progress > 0 && x.progress < x.total - 1) },
-      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && x.progress === 0 && x.progress !== x.total - 1) },
-      { title: "無法使用", items: ranked.filter((x) => x.blocked) },
+      { title: "已拿到", items: ranked.filter((x) => x.selected) },
+      { title: "還差 1 道", items: ranked.filter((x) => !x.met && !x.blocked && !x.selected && x.progress === x.total - 1) },
+      { title: "進行中", items: ranked.filter((x) => !x.met && !x.blocked && !x.selected && x.progress > 0 && x.progress < x.total - 1) },
+      { title: "尚未開始", items: ranked.filter((x) => !x.met && !x.blocked && !x.selected && x.progress === 0 && x.progress !== x.total - 1) },
+      { title: "無法使用", items: ranked.filter((x) => x.blocked && !x.selected) },
     ];
   }
 
@@ -2223,8 +2228,9 @@
     if (!list || !summary) return;
     const groups = rankLegendaries();
     const ready = groups[0].items.length;
+    const got = groups[1].items.length;
     const close = groups[2].items.length;
-    summary.textContent = `可領取 ${ready}／${LEGENDARIES.length}${close ? `　·　${close} 道只差一個條件` : ""}　·　點卡片看前置`;
+    summary.textContent = `可領取 ${ready}／${LEGENDARIES.length}${got ? `　·　已拿到 ${got}` : ""}${close ? `　·　${close} 道只差一個條件` : ""}　·　點卡片看前置，可標記已拿到`;
     list.innerHTML = groups.flatMap(({ title, items }) => {
       if (!items.length) return [];
       const cards = items.map((row) => {
@@ -2239,10 +2245,10 @@
           closeOne ? "is-close" : "",
           open ? "is-open" : "",
         ].join(" ");
-        const summaryLine = blocked
+        const summaryLine = blocked && !selected
           ? `<p class="warn">需要夜之聖鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>`
           : selected
-            ? `<p class="warn" style="color:#8ee0ad">已勾選</p>`
+            ? `<p class="warn" style="color:#8ee0ad">本輪已標記拿到</p>`
             : met
               ? `<p class="warn" style="color:#8ee0ad">前置已滿足，下次遇見可能提供</p>`
               : `<p class="duo-missing">${closeOne ? "還差：" : "還缺："}${missingLabels.join("、")}</p>`;
@@ -2254,7 +2260,7 @@
           <div class="progress"><span style="width:${(progress / total) * 100}%"></span></div>
           <p class="duo-req">${boon.effectZh}</p>
           ${summaryLine}
-          ${open ? legendGapsMarkup(boon) : ""}
+          ${open ? `${legendGapsMarkup(boon)}${obtainLegendMarkup(boon, selected)}` : ""}
         </article>`;
       });
       return [`<p class="duo-group-title">${title}</p>`, ...cards];
@@ -2335,8 +2341,9 @@
           <small>${god.nameZh} · 傳奇</small>
         </div>
         <p class="duo-req" style="margin-top:8px">${boon.effectZh}</p>
-        ${gaps.blocked ? `<p class="warn">需要夜之聖鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>` : gaps.met ? `<p class="warn" style="color:#8ee0ad">前置已滿足，下次遇見可能提供</p>` : `<p class="duo-missing">${closeOne ? "還差：" : "還缺："}${gaps.missingLabels.join("、")}</p>`}
+        ${gaps.blocked && !gaps.selected ? `<p class="warn">需要夜之聖鏡「${boon.soul === "stygian" ? "冥河靈魂" : "煉獄靈魂"}」</p>` : gaps.selected ? `<p class="warn" style="color:#8ee0ad">本輪已標記拿到</p>` : gaps.met ? `<p class="warn" style="color:#8ee0ad">前置已滿足，下次遇見可能提供</p>` : `<p class="duo-missing">${closeOne ? "還差：" : "還缺："}${gaps.missingLabels.join("、")}</p>`}
         ${legendGapsMarkup(boon)}
+        ${obtainLegendMarkup(boon, gaps.selected)}
         <button type="button" class="ghost" data-close-sheet style="margin-top:12px">關閉</button>
       `;
       paintNeededBoons();
@@ -2796,6 +2803,13 @@
       const idx = slots.indexOf(id);
       if (idx >= 0) setHammerSlot(idx, "");
       else setHammerSlot(slots[0] ? 1 : 0, id);
+      return;
+    }
+
+    const obtainLegendBtn = e.target.closest("[data-obtain-legend]");
+    if (obtainLegendBtn) {
+      e.preventDefault();
+      toggleBoon(obtainLegendBtn.dataset.obtainLegend);
       return;
     }
 
