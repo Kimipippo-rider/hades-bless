@@ -179,6 +179,7 @@ const BOONS = [
   { id: "second-wind", god: "hermes", slot: "extra", name: "Second Wind", nameZh: "越戰越勇", effectZh: "使用求援後短暫提高閃避與移速。" },
   { id: "rush-delivery", god: "hermes", slot: "extra", name: "Rush Delivery", nameZh: "欲速則達", effectZh: "依移動速度加成提高傷害。" },
   { id: "quick-reload", god: "hermes", slot: "extra", name: "Quick Reload", nameZh: "快速裝彈", effectZh: "插在敵人身上的血石更快掉落。", soul: "infernal" },
+  { id: "side-hustle", god: "hermes", slot: "extra", name: "Side Hustle", nameZh: "意外之財", effectZh: "每進入一個房間，獲得一些錢幣。" },
   { id: "auto-reload", god: "hermes", slot: "extra", name: "Auto Reload", nameZh: "自動填彈", effectZh: "血石自動回補更快。", soul: "stygian" },
   { id: "greater-recall", god: "hermes", slot: "legendary", name: "Greater Recall", nameZh: "自動收回", effectZh: "血石會自動回到你身邊。", soul: "infernal", prereq: { type: "OneOf", ids: ["flurry-cast", "quick-reload"], keepsakes: ["lambent-plume"] } },
   { id: "bad-news", god: "hermes", slot: "legendary", name: "Bad News", nameZh: "當頭一棒", effectZh: "對身上沒有你投彈彈藥的敵人，投彈傷害提高。", soul: "stygian", prereq: { type: "OneOf", ids: ["auto-reload"], keepsakes: ["lambent-plume"] } },
