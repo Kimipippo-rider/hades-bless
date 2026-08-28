@@ -960,6 +960,11 @@
     setTimeout(() => URL.revokeObjectURL(href), 2000);
   }
 
+  function sharePngStamp(date = new Date()) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  }
+
   async function exportSharePng() {
     const card = buildShareCard();
     if (!card) {
@@ -969,7 +974,7 @@
     try {
       if (document.fonts?.ready) await document.fonts.ready;
       const blob = await drawSharePng(card);
-      const fileName = `冥府祝福-${card.weaponZh.replace(/\s*·\s*/g, "-").replace(/\s+/g, "")}.png`;
+      const fileName = `冥府祝福-${card.weaponZh.replace(/\s*·\s*/g, "-").replace(/\s+/g, "")}-${sharePngStamp()}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
       try {
         if (viewportLayout() === "phone" && navigator.canShare?.({ files: [file] })) {
