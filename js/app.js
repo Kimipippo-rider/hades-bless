@@ -1155,6 +1155,58 @@
     return order.map((s) => source?.slots?.[s]).filter(Boolean);
   }
 
+  function schoolSlotForGod(school, godId) {
+    const slots = school?.slots || {};
+    for (const slot of ["attack", "special", "cast", "dash", "call"]) {
+      const id = slots[slot];
+      if (id && BOON_MAP[id]?.god === godId) return id;
+    }
+    return "";
+  }
+
+  const OPENING_FALLBACK = {
+    zeus: "lightning-strike",
+    poseidon: "tempest-strike",
+    athena: "divine-dash",
+    aphrodite: "heartbreak-strike",
+    artemis: "deadly-strike",
+    ares: "curse-of-agony",
+    dionysus: "drunken-strike",
+    demeter: "frost-strike",
+  };
+
+  function openingOfferForGod(godId, school = schoolOf()) {
+    if (!OPENING_FALLBACK[godId]) return null;
+    const coreId = schoolSlotForGod(school, godId);
+    if (coreId && BOON_MAP[coreId]) return { id: coreId, source: "core" };
+    const fallbackId = OPENING_FALLBACK[godId];
+    if (fallbackId && BOON_MAP[fallbackId]) return { id: fallbackId, source: "fallback" };
+    return null;
+  }
+
+  function openingCoreIds(school = schoolOf()) {
+    const ids = aspectCoreIds(school);
+    const keep = keepsakeOf();
+    if (keep?.type === "god" && keep.god) {
+      const first = schoolSlotForGod(school, keep.god);
+      if (first && ids.includes(first)) return [first, ...ids.filter((id) => id !== first)];
+    } else if (keep?.type === "utility" && school?.slots?.dash) {
+      const dash = school.slots.dash;
+      if (ids.includes(dash)) return [dash, ...ids.filter((id) => id !== dash)];
+    }
+    return ids;
+  }
+
+  function openingCoreLabels(school = schoolOf(), { withGod = false } = {}) {
+    return openingCoreIds(school).map((id) => {
+      const b = boonOf(id);
+      if (!b) return "";
+      const name = displayBoonName(b).nameZh;
+      const god = GODS[b.god]?.nameZh;
+      return withGod && god ? `${name}（${god}）` : name;
+    }).filter(Boolean);
+  }
+
   function aspectExtraIds(source = schoolOf()) {
     if (source?.extras) return source.extras;
     const core = new Set(aspectCoreIds(source));
@@ -1669,6 +1721,33 @@
     return null;
   }
 
+  function openingOfferFilled(offer) {
+    const boon = boonOf(offer?.id);
+    return Boolean(boon && selectedInSlot(boon.slot));
+  }
+
+  function openingOfferName(offer) {
+    const boon = boonOf(offer?.id);
+    return boon ? displayBoonName(boon).nameZh : "";
+  }
+
+  function openingOfferBlockNote(offer) {
+    const name = openingOfferName(offer);
+    if (!name) return "";
+    const filled = openingOfferFilled(offer) ? "；該欄已有，可跳過或拿其他" : "";
+    if (offer.source === "core") return `本房建議：${name}${filled}`;
+    return `本房可拿：${name}（非本流派核心）${filled}`;
+  }
+
+  function openingOfferHintText(offer, godId) {
+    const name = openingOfferName(offer);
+    const godName = GODS[godId]?.nameZh || "";
+    if (!name || !godName) return "";
+    if (openingOfferFilled(offer)) return `遇到${godName}：該欄已有，可跳過或拿其他。`;
+    if (offer.source === "core") return `遇到${godName}：拿${name}。`;
+    return `遇到${godName}：可拿${name}（非本流派核心）。`;
+  }
+
   function boonStatusLabel(boon) {
     if (!boon) return null;
     if (boon.god === "hermes") return "攻速";
@@ -1775,16 +1854,20 @@
     const keep = keepsakeOf();
     const here = REGIONS.find((r) => r.id === state.keepHere);
     const infernal = state.soul !== "stygian";
-    const core = aspectCoreIds(school).map((id) => {
-      const b = boonOf(id);
-      return b ? displayBoonName(b).nameZh : "";
-    }).filter(Boolean);
     const duos = (school.duos || []).map((id) => duoOf(id)?.nameZh).filter(Boolean);
-    const keepLabel = keep
-      ? (here ? `${here.nameZh} · ${keep.nameZh}` : `目前佩戴 ${keep.nameZh}`)
-      : `${GODS[school.gods[0]]?.nameZh || "核心神"}信物`;
-    const line1 = `${keepLabel} → ${core.join(" · ") || "核心欄位"}`;
     const line2 = [duos.length ? `衝 ${duos.join(" · ")}` : "", infernal ? "煉獄靈魂" : "冥河靈魂"].filter(Boolean).join("　·　");
+    let line1 = "";
+    if (keep?.type === "utility") {
+      const picks = openingCoreLabels(school, { withGod: true }).join(" · ") || "核心欄位";
+      const where = here ? `${here.nameZh} · ` : "";
+      line1 = `${where}${keep.nameZh}不鎖神。第一間房依本型態優先：${picks}`;
+    } else {
+      const core = openingCoreLabels(school).join(" · ") || "核心欄位";
+      const keepLabel = keep
+        ? (here ? `${here.nameZh} · ${keep.nameZh}` : `目前佩戴 ${keep.nameZh}`)
+        : `${GODS[school.gods[0]]?.nameZh || "核心神"}信物`;
+      line1 = `${keepLabel} → ${core}`;
+    }
     list.innerHTML = `${line1}<br>${line2}`;
   }
 
@@ -2018,13 +2101,24 @@
     const q = state.search.trim().toLowerCase();
     const waiting = state.runMode && !state.slotFilter && state.godFilter === "all" && !q;
     const hint = $("#run-hint");
+    const school = schoolOf();
+    const keep = keepsakeOf();
+    const roomOffer = keep?.type === "utility" ? openingOfferForGod(state.godFilter, school) : null;
     if (hint) {
       hint.hidden = !state.runMode;
-      hint.classList.toggle("is-visible", waiting);
-      const schoolGods = schoolOf()?.gods || [];
-      hint.textContent = waiting
-        ? `點上方欄位，快速勾選本輪祝福。建議優先：${schoolGods.map((id) => GODS[id].nameZh).join("、")}。`
-        : "正在顯示對應祝福；再點一次欄位可回到提示。";
+      const showOffer = Boolean(roomOffer) && !q;
+      hint.classList.toggle("is-visible", waiting || showOffer);
+      if (waiting) {
+        const picks = openingCoreLabels(school, { withGod: true }).join("、");
+        const schoolGods = (school?.gods || []).map((id) => GODS[id].nameZh).join("、");
+        hint.textContent = keep?.type === "utility"
+          ? `此信物不鎖神，第一間房優先找 ${picks || schoolGods}。`
+          : `點上方欄位，快速勾選本輪祝福。建議優先：${schoolGods}。`;
+      } else if (showOffer) {
+        hint.textContent = openingOfferHintText(roomOffer, state.godFilter);
+      } else {
+        hint.textContent = "正在顯示對應祝福；再點一次欄位可回到提示。";
+      }
     }
 
     if (state.godFilter === "hammer") {
@@ -2059,7 +2153,6 @@
       return;
     }
 
-    const school = schoolOf();
     const neededIds = neededBoonIds();
     const pomIds = new Set(aspectPomIds(school));
     const grouped = {};
@@ -2081,11 +2174,15 @@
     const slotZh = Object.fromEntries(SLOTS.map((s) => [s.id, s.nameZh]));
     const blocks = Object.keys(GODS).filter((id) => grouped[id]).map((gid) => {
       const g = GODS[gid];
-      const rec = (school?.gods || []).includes(gid);
+      const recGod = (school?.gods || []).includes(gid);
+      const offerHere = roomOffer && gid === state.godFilter ? roomOffer : null;
+      const headNote = offerHere
+        ? openingOfferBlockNote(offerHere)
+        : recGod ? "本型態建議" : gid === "chaos" ? "詛咒結束後生效" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重祝福";
       return `<article class="god-block" style="--g:${g.color}">
         <div class="god-block-head">
           <strong>${g.nameZh} · ${g.name}</strong>
-          <small>${rec ? "本型態建議" : gid === "chaos" ? "詛咒結束後生效" : g.curseZh ? `狀態：${g.curseZh}` : "無雙重祝福"}</small>
+          <small>${headNote}</small>
         </div>
         <div class="boon-grid">
           ${grouped[gid].map((b) => {
@@ -2093,15 +2190,18 @@
             const on = state.selected.has(b.id);
             const disabled = isBoonDisabled(b);
             const rec = Object.values(school?.slots || {}).includes(b.id);
+            const roomPick = Boolean(offerHere && b.id === offerHere.id);
             const needed = neededIds.has(b.id) && !on;
             const pom = pomIds.has(b.id) && boonCanPom(b);
             const focus = state.highlightBoon === b.id;
             const tags = [
               rec ? ["core", "核心"] : null,
+              roomPick ? ["core", "本房優先"] : null,
+              roomPick && offerHere.source === "fallback" ? ["core", "非本流派核心"] : null,
               needed ? ["duo", "雙重"] : null,
               pom ? ["pom", "建議石榴"] : null,
             ].filter(Boolean);
-            return `<button class="boon-card ${on ? "is-on" : ""} ${disabled ? "is-disabled" : ""} ${rec ? "is-rec" : ""} ${needed ? "is-needed" : ""} ${pom ? "is-pom" : ""} ${focus ? "is-focus" : ""}" data-boon="${b.id}" id="boon-${b.id}" style="--g:${g.color}" ${disabled ? "disabled" : ""}>
+            return `<button class="boon-card ${on ? "is-on" : ""} ${disabled ? "is-disabled" : ""} ${rec || roomPick ? "is-rec" : ""} ${needed ? "is-needed" : ""} ${pom ? "is-pom" : ""} ${focus ? "is-focus" : ""}" data-boon="${b.id}" id="boon-${b.id}" style="--g:${g.color}" ${disabled ? "disabled" : ""}>
               <span class="boon-slot">${slotZh[b.slot]}${b.slot === "legendary" ? " ★" : ""}</span>
               ${tags.length ? `<span class="boon-tags">${tags.map(([k, t]) => `<i class="tag-${k}">${t}</i>`).join("")}</span>` : ""}
               <strong>${shown.nameZh}${pomPipsMarkup(b.id)}</strong>
