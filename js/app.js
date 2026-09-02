@@ -94,22 +94,33 @@
     return Object.fromEntries(REGIONS.map((r) => [r.id, ""]));
   }
 
+  function keepIdFromSlotRow(row) {
+    if (typeof row === "string") return keepIdOk(row);
+    if (row && typeof row === "object") return keepIdOk(row.during || "");
+    return "";
+  }
+
+  function foldTempleIntoStyx(slots, templeId) {
+    if (!slots.styx && templeId) slots.styx = keepIdOk(templeId);
+  }
+
   function parseKeepSlots(raw) {
     const slots = emptyKeepSlots();
     if (typeof raw === "string") {
       const parts = raw.split(",");
-      const stride = parts.length >= 10 ? 2 : 1;
+      const stride = parts.length >= 10 ? 2 : parts.length >= 8 ? 2 : 1;
       REGIONS.forEach((r, i) => {
         slots[r.id] = keepIdOk(parts[i * stride] || "");
       });
+      if (stride === 2 && parts.length >= 10) foldTempleIntoStyx(slots, parts[8]);
+      else if (stride === 1 && parts.length >= 5) foldTempleIntoStyx(slots, parts[4]);
       return slots;
     }
     if (raw && typeof raw === "object") {
       REGIONS.forEach((r) => {
-        const row = raw[r.id];
-        if (typeof row === "string") slots[r.id] = keepIdOk(row);
-        else if (row && typeof row === "object") slots[r.id] = keepIdOk(row.during || "");
+        slots[r.id] = keepIdFromSlotRow(raw[r.id]);
       });
+      foldTempleIntoStyx(slots, keepIdFromSlotRow(raw.temple));
     }
     return slots;
   }
@@ -280,6 +291,7 @@
   }
 
   function validKeepHere(id) {
+    if (id === "temple") return "styx";
     return REGIONS.some((r) => r.id === id) ? id : "";
   }
 
@@ -1280,6 +1292,42 @@
     return `<button type="button" class="sys-chip ${on ? "is-on" : ""} ${rec ? "is-rec" : ""}" data-jump-boon="${boon.id}" ${g ? `style="--g:${g.color}"` : ""}>${shown.nameZh}${star}${pips}</button>`;
   }
 
+  function styxKeepRec(source = schoolOf()) {
+    const gods = source?.gods || [];
+    const have = new Set();
+    for (const id of state.selected) {
+      const god = BOON_MAP[id]?.god;
+      if (god) have.add(god);
+    }
+    const missing = gods.find((g) => g && !have.has(g));
+    if (missing) {
+      const keepId = godKeepsake(missing);
+      if (keepId) {
+        return {
+          duringId: keepId,
+          duringWhy: `區內補 ${GODS[missing]?.nameZh || "核心神"}`,
+          bossId: "evergreen-acorn",
+          bossWhy: "黑帝斯戰橡子",
+        };
+      }
+    }
+    const hasSustain = state.selected.has("stubborn-roots") || state.selected.has("high-tolerance");
+    if (aspectOf()?.id === "guan-yu" || !hasSustain) {
+      return {
+        duringId: "lucky-tooth",
+        duringWhy: "牙齒保命",
+        bossId: "evergreen-acorn",
+        bossWhy: "黑帝斯戰橡子",
+      };
+    }
+    return {
+      duringId: "evergreen-acorn",
+      duringWhy: "黑帝斯戰橡子",
+      bossId: "lucky-tooth",
+      bossWhy: "或牙齒保命",
+    };
+  }
+
   function keepsakeRoute(source = schoolOf()) {
     const gods = source?.gods || [];
     const g0 = godKeepsake(gods[0]);
@@ -1288,12 +1336,12 @@
     const n0 = gods[0] ? GODS[gods[0]].nameZh : "核心神";
     const n1 = gods[1] ? GODS[gods[1]].nameZh : "第二神";
     const n2 = gods[2] ? GODS[gods[2]].nameZh : "赫爾墨斯";
+    const styx = styxKeepRec(source);
     return [
       { region: REGIONS[0], duringId: g0, bossId: "evergreen-acorn", duringWhy: `區內鎖 ${n0}`, bossWhy: "復仇女神前換橡子" },
       { region: REGIONS[1], duringId: g1, bossId: "evergreen-acorn", duringWhy: `區內鋪 ${n1}`, bossWhy: "海德拉前換橡子" },
       { region: REGIONS[2], duringId: g2, bossId: "evergreen-acorn", duringWhy: `區內 ${n2} 或羽毛`, bossWhy: "忒修斯前換橡子" },
-      { region: REGIONS[3], duringId: "lucky-tooth", bossId: "lambent-plume", duringWhy: "牙齒保命", bossWhy: "或繼續疊羽毛" },
-      { region: REGIONS[4], duringId: "evergreen-acorn", bossId: "lucky-tooth", duringWhy: "黑帝斯戰橡子", bossWhy: "或牙齒保命" },
+      { region: REGIONS[3], duringId: styx.duringId, bossId: styx.bossId, duringWhy: styx.duringWhy, bossWhy: styx.bossWhy },
     ];
   }
 
@@ -1912,6 +1960,7 @@
       el.innerHTML = "";
       return;
     }
+    if (state.keepFocus === "temple") state.keepFocus = "styx";
     el.hidden = false;
     const keep = keepsakeOf();
     const here = REGIONS.find((r) => r.id === state.keepHere);

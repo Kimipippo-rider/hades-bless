@@ -1536,7 +1536,6 @@ const REGIONS = [
   { id: "asphodel", nameZh: "阿斯弗德爾" },
   { id: "elysium", nameZh: "極樂原" },
   { id: "styx", nameZh: "冥河" },
-  { id: "temple", nameZh: "冥府聖殿" },
 ];
 
 const KEEPSAKES = [

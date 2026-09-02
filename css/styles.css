@@ -473,7 +473,7 @@ h3 { font-size: 16px; color: var(--gold-2); }
 }
 .keep-rail-track {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 .keep-region {
